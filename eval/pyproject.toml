@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "angar-eval"
+version = "0.1.0"
+description = "Eval harness for Angar.ai Georgian-invoice extraction. Compares Claude vision output against hand-labeled ground truth per Phase 3 design doc §5."
+requires-python = ">=3.11"
+readme = "README.md"
+authors = [{ name = "Giorgi Gakharia", email = "giorgigakharia@gmail.com" }]
+license = { text = "Proprietary" }
+
+dependencies = [
+    "anthropic>=0.50",
+    "pydantic>=2.0",
+    "rich>=13",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+]
+
+[project.scripts]
+angar-eval = "eval.harness:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["eval*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

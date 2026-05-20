@@ -69,3 +69,7 @@ scratch/
 # --- Extraction outputs (regenerable; keep eval ground truth in /labels) ---
 outputs/
 *.extraction.json
+
+# --- Eval harness runs (regenerable; one JSON per run; can grow large) ---
+eval/runs/
+eval/.cache/
