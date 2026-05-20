@@ -1,0 +1,111 @@
+# Gold label: Waybill_List1 (from `data/labeling_forms/label_Waybill_List1.md`)
+
+```json
+{
+  "accepted": true,
+  "rejection_reason": null,
+  "document_type": "waybill",
+  "document_number": "ელ-0979422496",
+  "document_date": "2026-05-19",
+  "document_currency": "GEL",
+  "seller": {
+    "name": "სატესტო კოდი1",
+    "tin": "206322102",
+    "tin_label_present": true,
+    "party_type": "legal_entity",
+    "address": null,
+    "bank_account": null,
+    "script": "mkhedruli",
+    "extracted_from_region": null
+  },
+  "buyer": {
+    "name": "სატესტო კოდი1",
+    "tin": "206322102",
+    "tin_label_present": true,
+    "party_type": "legal_entity",
+    "address": null,
+    "bank_account": null,
+    "script": "mkhedruli",
+    "extracted_from_region": null
+  },
+  "items": [
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "საბურავი 123654789~][პოიუყტრეწქასდფგჰჯკმ", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "37", "item_code": "0000000000000011", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] },
+    { "description": "test", "quantity": "1.0000", "unit": "piece", "unit_price": { "amount": "0.0000", "currency": "GEL" }, "subtotal": null, "vat_amount": null, "total": { "amount": "0.0000", "currency": "GEL" }, "vat_treatment": "unknown", "sku": null, "barcode": "13", "item_code": "0000000000000008", "excise_amount": null, "excise_code": null, "sub_charges": [] }
+  ],
+  "subtotal_total": { "amount": "0.0000", "currency": "GEL" },
+  "vat_total": null,
+  "discount_total": null,
+  "shipping_cost": { "amount": "0", "currency": "GEL" },
+  "grand_total": { "amount": "0.0000", "currency": "GEL" },
+  "is_vat_invoice": false,
+  "is_reverse_vat": false,
+  "vat_treatment_overall": "unknown",
+  "vat_treatment_reason": "All amounts are zero — placeholder / internal transfer between same TIN",
+  "is_free_of_charge": true,
+  "references_other_document": null,
+  "transport": {
+    "start_address": "თბილისი, დავით აღმაშენებლის ხეივანი 129",
+    "end_address": "თბილისი, შეშელიძის ქუჩა 43",
+    "driver": {
+      "name": "ტარიელ",
+      "tin": "18001001320",
+      "tin_label_present": true,
+      "party_type": "individual_ge",
+      "address": null,
+      "bank_account": null,
+      "script": "mkhedruli",
+      "extracted_from_region": null
+    },
+    "vehicle_plate": "AA310",
+    "has_trailer": false,
+    "transport_cost": { "amount": "0", "currency": "GEL" },
+    "transport_cost_payer": "buyer",
+    "begin_date": "2026-05-19T15:38:16",
+    "delivery_date": null
+  },
+  "notes": null,
+  "contains_pii_beyond_parties": false,
+  "extraction_notes": [
+    "Operation type: შიდა გადაზიდვა (internal transport — seller and buyer are the same TIN)",
+    "28 line items across 3 pages with continuation header სასაქონლო ზედნადების დანართი",
+    "All amounts zero — appears to be a test/placeholder waybill",
+    "Trailer field shows X with empty trailer plate; interpreted as no trailer; mark as null if convention requires"
+  ],
+  "extraction": {
+    "source_filename": "Waybill_List1.pdf",
+    "source_pdf_sha256": "ignored-in-eval",
+    "extracted_at": "2025-01-01T00:00:00Z",
+    "model_version": "ignored-in-eval",
+    "prompt_version": "ignored-in-eval",
+    "field_confidence": {},
+    "warnings": [],
+    "processing_time_ms": null
+  }
+}
+```
