@@ -9,8 +9,9 @@ Must pass before any prompt change merges to `main`.
 
 ## Setup (one time)
 
+Run from the repo root (where the project's `pyproject.toml` lives):
+
 ```powershell
-cd eval
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
