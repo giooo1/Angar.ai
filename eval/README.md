@@ -60,6 +60,45 @@ For each `(pdf, label.md)` pair in `project foundation/`:
 A full Sonnet 4.6 run on 18 docs with caching: roughly **$0.40–$0.60**.
 Haiku 4.5: roughly **$0.10**.
 
+## Current baseline
+
+The committed baseline prompt is `eval/prompts/v1.md` (schema-embedded
+descendant of the week-1 `v0.md`).
+
+| Metric | Value |
+|---|---|
+| Run date | 2026-05-21 |
+| Model | `claude-sonnet-4-6` |
+| Prompt | `v1` |
+| Overall accuracy | **87.34%** (mean of per-doc weighted_accuracy across 18 docs) |
+| Parse failures | 0 / 18 |
+| Total cost (approx) | ~$0.55 |
+| Cache hit rate | system prompt cached on docs 2–18 (56,508 cache reads / 56,275 input) |
+| Best doc | `invoice_004` at 93.8% |
+| Worst doc | `Waybill_List1` at 77.1% |
+| Run JSON filename | `2026-05-21T09-01-57.644994+00-00__v1__claude-sonnet-4-6.json` (local under `eval/runs/`) |
+
+To `--compare-to` against this baseline, use the run JSON filename above
+on your machine. The baseline file itself is gitignored — runs regenerate
+on each invocation.
+
+Top recurring failure patterns on this baseline (for the next prompt
+iteration to address):
+
+1. `document_number` whitespace: model returns `'ელ- 0976696987'` with a
+   space after the prefix; labels have `'ელ-0976696987'`. Either fix in
+   the prompt or relax the comparator's normalization.
+2. `vat_treatment_overall` on waybills marked as VAT payers without a
+   VAT breakdown column: model returns `'inclusive'`; Phase 3 spec calls
+   for the conservative `'unknown'` default.
+3. `subtotal_total` and `shipping_cost` left null on free-of-charge
+   waybills where labels have explicit zeros (`{"amount": "0",
+   "currency": "GEL"}` — per the "preserve explicit zeros" spec rule).
+4. `contains_pii_beyond_parties` over-reported (model conservative, label
+   reserves it for line-item PII specifically).
+5. Product `(ref ...)` fragments split into `sku`/`item_code` on
+   DRESSUP-style invoices instead of kept in `description`.
+
 ## What this harness does NOT do
 
 - It doesn't touch a database. Results live in `eval/runs/` as JSON files.

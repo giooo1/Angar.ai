@@ -46,7 +46,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_arg_parser()
     args = parser.parse_args(argv)
 
-    console = Console()
+    # Force UTF-8 stdout + modern rich renderer so Mkhedruli / Georgian text
+    # in mismatch tables doesn't crash on Windows cp1252 consoles.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    console = Console(legacy_windows=False, force_terminal=True)
     load_dotenv()  # picks up ANTHROPIC_API_KEY from repo-root .env
 
     repo_root = Path(__file__).resolve().parents[1]
