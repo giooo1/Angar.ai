@@ -1,0 +1,103 @@
+"""SQLAlchemy ORM models for the backend.
+
+Mirrors Phase 3 §2.2 (documents, extractions) using SQLite-compatible
+types. On the Postgres swap later, the JSON columns become JSONB but
+nothing else needs changing.
+
+Multi-tenancy: every row carries `organization_id`. While auth isn't
+landed yet (step 5), the column exists with a stubbed default so the
+schema doesn't need migrating once real orgs / users come online.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from backend.db import Base
+
+
+def _uuid_str() -> str:
+    return str(uuid.uuid4())
+
+
+def _utcnow() -> datetime:
+    return datetime.now(tz=timezone.utc)
+
+
+def _retention_default() -> datetime:
+    # 30 days from now. Matches settings.retention_days but resolved at
+    # row-creation time, not import time. Settings injection happens at
+    # the service layer; the model uses a sensible default.
+    return _utcnow() + timedelta(days=30)
+
+
+class Document(Base):
+    """One row per uploaded file. Dedup by (organization_id, file_sha256)."""
+
+    __tablename__ = "documents"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "file_sha256", name="uq_doc_org_sha"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_str)
+
+    organization_id: Mapped[str] = mapped_column(String(64), index=True)
+    uploaded_by_user_id: Mapped[str] = mapped_column(String(64))
+
+    original_filename: Mapped[str] = mapped_column(String(512))
+    file_sha256: Mapped[str] = mapped_column(String(64), index=True)
+    file_size_bytes: Mapped[int] = mapped_column(BigInteger)
+    file_mime_type: Mapped[str] = mapped_column(String(64))
+    storage_path: Mapped[str] = mapped_column(String(512))
+
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    delete_at: Mapped[datetime] = mapped_column(DateTime, default=_retention_default)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    extractions: Mapped[list["Extraction"]] = relationship(
+        back_populates="document",
+        order_by="Extraction.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
+
+
+class Extraction(Base):
+    """One row per extraction attempt against a Document. Multiple per doc allowed."""
+
+    __tablename__ = "extractions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_str)
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), index=True
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(16), default="pending"
+    )  # pending | running | completed | failed
+    prompt_version: Mapped[str] = mapped_column(String(64))
+    model_version: Mapped[str] = mapped_column(String(64))
+
+    canonical_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    field_confidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    warnings: Mapped[list[str]] = mapped_column(JSON, default=list)
+    error_message: Mapped[str | None] = mapped_column(String(4096), nullable=True)
+
+    processing_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    document: Mapped["Document"] = relationship(back_populates="extractions")
