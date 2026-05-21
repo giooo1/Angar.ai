@@ -26,8 +26,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Literal
 
-from eval import canonical_path  # noqa: F401
-from canonical import (  # noqa: E402
+from angar_schema.canonical import (
     CanonicalInvoice,
     LineItem,
     Money,

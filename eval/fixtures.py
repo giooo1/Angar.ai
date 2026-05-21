@@ -16,8 +16,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from eval import canonical_path  # noqa: F401  -- side-effect import: extends sys.path
-from canonical import CanonicalInvoice  # noqa: E402  -- import after path shim
+from angar_schema.canonical import CanonicalInvoice
 
 _JSON_BLOCK_RE = re.compile(r"```json\s*\n(.*?)\n```", re.DOTALL)
 

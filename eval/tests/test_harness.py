@@ -17,15 +17,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from eval import canonical_path  # noqa: F401
-from canonical import (  # noqa: E402
+from angar_schema.canonical import (
     CanonicalInvoice,
     Currency,
     DocumentType,
     ExtractionMetadata,
 )
+from angar_extraction.extractor import ExtractionResult
 from eval import harness
-from eval.extractor import ExtractionResult
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +75,7 @@ def fake_prompt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     prompts = tmp_path / "prompts"
     prompts.mkdir()
     (prompts / "v0.md").write_text("You extract invoices.", encoding="utf-8")
-    from eval import prompt as prompt_module
+    from angar_extraction import prompt as prompt_module
     monkeypatch.setattr(prompt_module, "PROMPTS_DIR", prompts)
     return prompts
 

@@ -20,10 +20,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from eval import canonical_path  # noqa: F401
-from eval import extractor as extractor_module
-from eval import prompt as prompt_module
-from eval.extractor import (  # noqa: E402
+from angar_extraction import extractor as extractor_module  # noqa: F401  (kept for parity)
+from angar_extraction import prompt as prompt_module
+from angar_extraction.extractor import (
     Extractor,
     _extract_first_json_object,
     _try_parse_canonical,
@@ -108,7 +107,7 @@ class TestConstruction:
         prompts.mkdir()
         (prompts / "v0.md").write_text("<!-- placeholder -->", encoding="utf-8")
         monkeypatch.setattr(prompt_module, "PROMPTS_DIR", prompts)
-        from eval.prompt import PromptError
+        from angar_extraction.prompt import PromptError
 
         with pytest.raises(PromptError):
             Extractor(model="claude-sonnet-4-6", prompt_version="v0", client=mock_client)

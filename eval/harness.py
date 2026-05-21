@@ -25,10 +25,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from rich.console import Console
 
+from angar_extraction.extractor import Extractor
+from angar_extraction.prompt import PromptError
 from eval.comparator import compare
-from eval.extractor import Extractor
 from eval.fixtures import Fixture, FixtureError, load_fixtures, load_single
-from eval.prompt import PromptError
 from eval.report import (
     build_run_result,
     compare_runs,

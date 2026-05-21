@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "angar-eval"
+name = "angar"
 version = "0.1.0"
-description = "Eval harness for Angar.ai Georgian-invoice extraction. Compares Claude vision output against hand-labeled ground truth per Phase 3 design doc §5."
+description = "Angar.ai — Georgian-invoice extraction. Includes the eval harness, the shared canonical schema, the shared extractor (Claude vision), and the FastAPI backend pipeline."
 requires-python = ">=3.11"
 readme = "eval/README.md"
 authors = [{ name = "Giorgi Gakharia", email = "giorgigakharia@gmail.com" }]
@@ -29,8 +29,8 @@ angar-eval = "eval.harness:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["eval*"]
-exclude = ["eval.tests*", "eval.runs*"]
+include = ["angar_schema*", "angar_extraction*", "eval*", "backend*"]
+exclude = ["eval.tests*", "eval.runs*", "backend.tests*", "backend.local*"]
 
 [tool.pytest.ini_options]
 testpaths = ["eval/tests"]

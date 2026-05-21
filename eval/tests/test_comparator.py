@@ -14,8 +14,7 @@ from decimal import Decimal
 
 import pytest
 
-from eval import canonical_path  # noqa: F401
-from canonical import (  # noqa: E402
+from angar_schema.canonical import (
     CanonicalInvoice,
     Currency,
     DocumentType,
@@ -28,7 +27,7 @@ from canonical import (  # noqa: E402
     TransportInfo,
     VATTreatment,
 )
-from eval.comparator import (  # noqa: E402
+from eval.comparator import (
     TIER_WEIGHT,
     DocResult,
     FieldResult,

@@ -26,9 +26,8 @@ from typing import Any
 
 from anthropic import Anthropic
 
-from eval import canonical_path  # noqa: F401
-from canonical import CanonicalInvoice  # noqa: E402
-from eval.prompt import load_prompt  # noqa: E402
+from angar_schema.canonical import CanonicalInvoice
+from angar_extraction.prompt import load_prompt
 
 
 _EXTRACT_INSTRUCTION = (

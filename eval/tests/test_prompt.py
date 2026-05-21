@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from eval import prompt as prompt_module
-from eval.prompt import PromptError, _is_placeholder, list_versions, load_prompt
+from angar_extraction import prompt as prompt_module
+from angar_extraction.prompt import PromptError, _is_placeholder, list_versions, load_prompt
 
 
 @pytest.fixture
