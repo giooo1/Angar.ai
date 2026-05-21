@@ -73,3 +73,10 @@ outputs/
 # --- Eval harness runs (regenerable; one JSON per run; can grow large) ---
 eval/runs/
 eval/.cache/
+
+# --- Backend local storage (SQLite DB + uploaded files) ---
+backend/.local/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-journal
