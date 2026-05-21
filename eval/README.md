@@ -62,42 +62,54 @@ Haiku 4.5: roughly **$0.10**.
 
 ## Current baseline
 
-The committed baseline prompt is `eval/prompts/v1.md` (schema-embedded
-descendant of the week-1 `v0.md`).
+The committed baseline prompt is `eval/prompts/v3.md` (document-type-scoped
+descendant of v2; itself a schema-embedded descendant of the week-1 `v0.md`).
 
 | Metric | Value |
 |---|---|
 | Run date | 2026-05-21 |
 | Model | `claude-sonnet-4-6` |
-| Prompt | `v1` |
-| Overall accuracy | **87.34%** (mean of per-doc weighted_accuracy across 18 docs) |
+| Prompt | `v3` |
+| Overall accuracy | **91.98%** (mean of per-doc weighted_accuracy across 18 docs) |
 | Parse failures | 0 / 18 |
-| Total cost (approx) | ~$0.55 |
-| Cache hit rate | system prompt cached on docs 2–18 (56,508 cache reads / 56,275 input) |
-| Best doc | `invoice_004` at 93.8% |
-| Worst doc | `Waybill_List1` at 77.1% |
-| Run JSON filename | `2026-05-21T09-01-57.644994+00-00__v1__claude-sonnet-4-6.json` (local under `eval/runs/`) |
+| Total cost (approx) | ~$0.55 per full run |
+| Cache hit rate | 119,187 cache reads vs 56,275 input — full reuse on docs 2–18 |
+| Docs ≥ 90% | 14 / 18 |
+| Docs ≥ 95% | 9 / 18 |
+| Best doc | `invoice_001` at 98.5% |
+| Worst doc | `invoice_003` (payment-order rejection) at 78.8% |
+| Run JSON filename | `2026-05-21T09-...__v3__claude-sonnet-4-6.json` (local under `eval/runs/`) |
 
-To `--compare-to` against this baseline, use the run JSON filename above
-on your machine. The baseline file itself is gitignored — runs regenerate
-on each invocation.
+### Iteration history
 
-Top recurring failure patterns on this baseline (for the next prompt
-iteration to address):
+| Prompt | Date | Overall | Parse fails | What changed |
+|---|---|---|---|---|
+| `v0` | 2026-05-21 | 0.0% | 18/18 | Week-1 prompt; no schema description → model invented its own |
+| `v1` | 2026-05-21 | 87.34% | 0/18 | Added explicit schema reference (field names, Money shape, enum values) |
+| `v2` | 2026-05-21 | 88.43% | 1/18 | Added waybill VAT-default, explicit-zero, two-code-column rules. Waybills 11/11 ≥93.9% but invoices regressed (waybill rules leaked) |
+| `v3` | 2026-05-21 | **91.98%** | 0/18 | Scoped rules by document type; tightened honest-nulls; JSON-escaped ASCII `"` inside Mkhedruli company names |
 
-1. `document_number` whitespace: model returns `'ელ- 0976696987'` with a
-   space after the prefix; labels have `'ელ-0976696987'`. Either fix in
-   the prompt or relax the comparator's normalization.
-2. `vat_treatment_overall` on waybills marked as VAT payers without a
-   VAT breakdown column: model returns `'inclusive'`; Phase 3 spec calls
-   for the conservative `'unknown'` default.
-3. `subtotal_total` and `shipping_cost` left null on free-of-charge
-   waybills where labels have explicit zeros (`{"amount": "0",
-   "currency": "GEL"}` — per the "preserve explicit zeros" spec rule).
-4. `contains_pii_beyond_parties` over-reported (model conservative, label
-   reserves it for line-item PII specifically).
-5. Product `(ref ...)` fragments split into `sku`/`item_code` on
-   DRESSUP-style invoices instead of kept in `description`.
+### Remaining failure patterns (for v4 if pursued)
+
+1. `party_type` over-conservative on waybills: model says `"unknown"` when
+   the document does show a 9-digit labeled TIN that should give
+   `"legal_entity"`. v3 was tuned to fix v2's over-eagerness; the dial
+   needs to swing back slightly.
+2. `script = "mixed"` over-applied: model marks a party as mixed when
+   a single non-Mkhedruli char appears that the label tolerates as pure
+   Mkhedruli. The "any one Latin character" rule may be too strict.
+3. `transport.has_trailer = False` vs `None` and similar transport-block
+   presence calls on free-of-charge waybills: model populates when label
+   leaves null.
+4. `vehicle_plate` minor errors (`'AA310'` vs `'AA310X'`) — model
+   over-reading the trailer-plate column.
+5. `invoice_003` (Terabank payment order) sits at 78.8% — the rejection
+   path matches but `references_other_document` and free-text fields
+   wobble. Limited upside without per-doc-family canonical phrasing.
+
+To `--compare-to` against this baseline, use the v3 run JSON filename
+above on your machine. The baseline file itself is gitignored — runs
+regenerate on each invocation.
 
 ## What this harness does NOT do
 
