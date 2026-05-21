@@ -38,7 +38,7 @@ include = ["angar_schema*", "angar_extraction*", "eval*", "backend*"]
 exclude = ["eval.tests*", "eval.runs*", "backend.tests*", "backend.local*"]
 
 [tool.pytest.ini_options]
-testpaths = ["eval/tests"]
+testpaths = ["eval/tests", "backend/tests"]
 pythonpath = ["."]
 addopts = "-ra --strict-markers"
 
