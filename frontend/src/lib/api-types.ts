@@ -5,6 +5,8 @@
  * truth at runtime; this file is the compile-time shadow.
  */
 
+import type { CanonicalInvoice } from "./canonical";
+
 export type ExtractionStatus =
   | "pending"
   | "running"
@@ -23,11 +25,17 @@ export interface ExtractionStatusResponse {
   status: ExtractionStatus;
   prompt_version: string;
   model_version: string;
-  /** CanonicalInvoice shape; typed loosely until step 4 needs the fields. */
-  canonical_data: Record<string, unknown> | null;
+  canonical_data: CanonicalInvoice | null;
   warnings: string[];
   error_message: string | null;
   processing_time_ms: number | null;
+}
+
+export interface ListExtractionsResponse {
+  items: ExtractionStatusResponse[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 /** Inner error body per Phase 3 §3.1. */

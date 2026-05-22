@@ -10,6 +10,7 @@ import {
   ApiError,
   type ApiErrorBody,
   type ExtractionStatusResponse,
+  type ListExtractionsResponse,
   type UploadResponse,
 } from "./api-types";
 
@@ -108,6 +109,28 @@ export async function pollExtraction(
     const delay = elapsed < 30_000 ? 2_000 : 5_000;
     await new Promise((r) => setTimeout(r, delay));
   }
+}
+
+/** URL the iframe / <a> tag uses to fetch the original PDF for an upload. */
+export function documentFileUrl(documentId: string): string {
+  return `${API_BASE}/api/v1/documents/${documentId}/file`;
+}
+
+/**
+ * Paginated list of extractions (org-scoped on the server side). Used by
+ * the Review queue page at /review.
+ */
+export async function listExtractions(
+  params: { page?: number; pageSize?: number } = {},
+  signal?: AbortSignal,
+): Promise<ListExtractionsResponse> {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.pageSize) qs.set("page_size", String(params.pageSize));
+  const url = `${API_BASE}/api/v1/extractions${qs.size ? `?${qs}` : ""}`;
+  const res = await fetch(url, { signal, cache: "no-store" });
+  if (!res.ok) await unwrapError(res);
+  return (await res.json()) as ListExtractionsResponse;
 }
 
 export const apiBase = API_BASE;
