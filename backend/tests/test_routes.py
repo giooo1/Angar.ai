@@ -199,3 +199,143 @@ class TestReextract:
         r = client.post("/api/v1/documents/nope/extract")
         assert r.status_code == 404
         assert r.json()["detail"]["error"]["code"] == "DOCUMENT_NOT_FOUND"
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/documents/{id}/file — original PDF streaming
+# ---------------------------------------------------------------------------
+
+class TestGetDocumentFile:
+    def test_returns_pdf_bytes_inline(self, client: TestClient) -> None:
+        pdf_bytes = b"%PDF-1.4 fake content here"
+        upload = client.post(
+            "/api/v1/documents",
+            files={"file": ("source.pdf", pdf_bytes, "application/pdf")},
+        ).json()
+
+        r = client.get(f"/api/v1/documents/{upload['document_id']}/file")
+        assert r.status_code == 200
+        assert r.content == pdf_bytes
+        assert r.headers["content-type"].startswith("application/pdf")
+        assert "inline" in r.headers["content-disposition"]
+        assert "source.pdf" in r.headers["content-disposition"]
+
+    def test_404_for_unknown_document(self, client: TestClient) -> None:
+        r = client.get("/api/v1/documents/does-not-exist/file")
+        assert r.status_code == 404
+        assert r.json()["detail"]["error"]["code"] == "DOCUMENT_NOT_FOUND"
+
+    def test_404_for_soft_deleted_document(
+        self, client: TestClient, db_session
+    ) -> None:
+        from datetime import datetime, timezone
+
+        from backend.models import Document
+
+        upload = client.post(
+            "/api/v1/documents",
+            files={"file": ("x.pdf", b"%PDF body", "application/pdf")},
+        ).json()
+
+        doc = db_session.get(Document, upload["document_id"])
+        doc.deleted_at = datetime.now(tz=timezone.utc)
+        db_session.commit()
+
+        r = client.get(f"/api/v1/documents/{upload['document_id']}/file")
+        assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/extractions — paginated list
+# ---------------------------------------------------------------------------
+
+class TestListExtractions:
+    def _seed_uploads(self, client: TestClient, count: int) -> list[str]:
+        ids: list[str] = []
+        for i in range(count):
+            r = client.post(
+                "/api/v1/documents",
+                files={
+                    "file": (
+                        f"doc-{i}.pdf",
+                        f"%PDF unique content {i}".encode(),
+                        "application/pdf",
+                    )
+                },
+            )
+            ids.append(r.json()["extraction_id"])
+        return ids
+
+    def test_empty_when_no_extractions(self, client: TestClient) -> None:
+        r = client.get("/api/v1/extractions")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["items"] == []
+        assert body["total"] == 0
+        assert body["page"] == 1
+        assert body["page_size"] == 25
+
+    def test_returns_items_newest_first(self, client: TestClient) -> None:
+        ids = self._seed_uploads(client, count=3)
+        r = client.get("/api/v1/extractions")
+        body = r.json()
+        assert body["total"] == 3
+        # The most recently created extraction is item 0.
+        returned_ids = [item["extraction_id"] for item in body["items"]]
+        assert returned_ids == list(reversed(ids))
+
+    def test_pagination(self, client: TestClient) -> None:
+        self._seed_uploads(client, count=5)
+        r = client.get("/api/v1/extractions?page=1&page_size=2")
+        body = r.json()
+        assert body["total"] == 5
+        assert len(body["items"]) == 2
+        assert body["page"] == 1
+        assert body["page_size"] == 2
+
+        r2 = client.get("/api/v1/extractions?page=3&page_size=2")
+        body2 = r2.json()
+        assert len(body2["items"]) == 1  # last page has 1 item
+        assert body2["page"] == 3
+
+    def test_filters_by_org(
+        self, client: TestClient, db_session, tmp_path: Path
+    ) -> None:
+        """Extractions from a different org must not leak into the list."""
+        from backend.models import Document, Extraction
+        import uuid
+
+        self._seed_uploads(client, count=2)
+
+        # Insert one document + extraction under a different org directly.
+        other_doc = Document(
+            id=str(uuid.uuid4()),
+            organization_id="other-org",
+            uploaded_by_user_id="someone-else",
+            original_filename="other.pdf",
+            file_sha256="dead",
+            file_size_bytes=10,
+            file_mime_type="application/pdf",
+            storage_path="other-org/dead.pdf",
+        )
+        db_session.add(other_doc)
+        db_session.flush()
+        other_ext = Extraction(
+            id=str(uuid.uuid4()),
+            document_id=other_doc.id,
+            status="completed",
+            prompt_version="v3",
+            model_version="claude-sonnet-4-6",
+        )
+        db_session.add(other_ext)
+        db_session.commit()
+
+        r = client.get("/api/v1/extractions")
+        body = r.json()
+        assert body["total"] == 2
+        returned_ids = {item["extraction_id"] for item in body["items"]}
+        assert other_ext.id not in returned_ids
+
+    def test_invalid_page_returns_422(self, client: TestClient) -> None:
+        r = client.get("/api/v1/extractions?page=0")
+        assert r.status_code == 422  # FastAPI validation: page must be >= 1

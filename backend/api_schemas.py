@@ -38,6 +38,15 @@ class ExtractionStatusResponse(BaseModel):
     processing_time_ms: int | None = None
 
 
+class ListExtractionsResponse(BaseModel):
+    """Returned by GET /api/v1/extractions — paginated list."""
+
+    items: list[ExtractionStatusResponse]
+    total: int
+    page: int
+    page_size: int
+
+
 class ApiError(BaseModel):
     """Inner error payload per Phase 3 §3.1."""
 

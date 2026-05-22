@@ -8,11 +8,18 @@ Celery without changing this contract.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, HTTPException, Path, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, Response, UploadFile, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from angar_extraction.extractor import Extractor
-from backend.api_schemas import ApiError, ErrorResponse, ExtractionStatusResponse, UploadResponse
+from backend.api_schemas import (
+    ApiError,
+    ErrorResponse,
+    ExtractionStatusResponse,
+    ListExtractionsResponse,
+    UploadResponse,
+)
 from backend.db import get_db
 from backend.extraction_service import (
     ExtractionServiceError,
@@ -208,4 +215,108 @@ def reextract_document(
         document_id=document_id,
         extraction_id=extraction.id,
         status=extraction.status,  # type: ignore[arg-type]
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /documents/{id}/file — stream the original upload
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/documents/{document_id}/file",
+    responses={404: {"model": ErrorResponse}},
+)
+def get_document_file(
+    document_id: str = Path(...),
+    db: Session = Depends(get_db),
+    storage: Storage = Depends(get_storage),
+) -> Response:
+    """Stream the original uploaded PDF/image bytes back to the client.
+
+    Used by the Review screen's iframe in the frontend. No auth gate yet
+    — anyone with a known document UUID can fetch the file. Phase 4 step 5
+    will tighten this when auth lands.
+    """
+    doc = db.get(Document, document_id)
+    if doc is None or doc.deleted_at is not None:
+        raise HTTPException(
+            status_code=404,
+            detail=_bilingual_error(
+                "DOCUMENT_NOT_FOUND",
+                f"Document {document_id} not found.",
+                f"დოკუმენტი {document_id} ვერ მოიძებნა.",
+            ).model_dump(),
+        )
+    try:
+        content = storage.get(doc.storage_path)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=404,
+            detail=_bilingual_error(
+                "DOCUMENT_FILE_MISSING",
+                f"Document content not found in storage: {exc}",
+                f"დოკუმენტის ფაილი ვერ მოიძებნა საცავში.",
+            ).model_dump(),
+        ) from exc
+
+    # Inline so the iframe renders the PDF rather than downloading it.
+    # Filename escaped via quote() so non-ASCII (Georgian) names survive.
+    safe_name = doc.original_filename.replace('"', "")
+    return Response(
+        content=content,
+        media_type=doc.file_mime_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{safe_name}"',
+            "Cache-Control": "private, max-age=60",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /extractions — paginated list (for the Review queue)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/extractions",
+    response_model=ListExtractionsResponse,
+)
+def list_extractions(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
+) -> ListExtractionsResponse:
+    """List recent extractions, newest first, filtered to the caller's org.
+
+    Without auth (step 5 work) the org is the stubbed `demo-org`. Once auth
+    lands the org gets pulled from the request principal instead.
+
+    Page size capped at 100 so a misbehaving client can't pull the whole
+    table at once.
+    """
+    org_id = settings.default_org_id
+
+    base = (
+        select(Extraction)
+        .join(Document, Extraction.document_id == Document.id)
+        .where(Document.organization_id == org_id)
+    )
+
+    total = db.execute(
+        select(func.count()).select_from(base.subquery())
+    ).scalar_one()
+
+    rows = db.execute(
+        base.order_by(Extraction.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    ).scalars().all()
+
+    items = [_status_response(r.document, r) for r in rows]
+
+    return ListExtractionsResponse(
+        items=items,
+        total=int(total),
+        page=page,
+        page_size=page_size,
     )
