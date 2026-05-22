@@ -1,0 +1,58 @@
+/**
+ * TypeScript mirrors of backend/api_schemas.py.
+ * When the backend changes shape, change this file too. The backend's
+ * OpenAPI spec at http://localhost:8000/openapi.json is the source of
+ * truth at runtime; this file is the compile-time shadow.
+ */
+
+export type ExtractionStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed";
+
+export interface UploadResponse {
+  document_id: string;
+  extraction_id: string;
+  status: ExtractionStatus;
+}
+
+export interface ExtractionStatusResponse {
+  document_id: string;
+  extraction_id: string;
+  status: ExtractionStatus;
+  prompt_version: string;
+  model_version: string;
+  /** CanonicalInvoice shape; typed loosely until step 4 needs the fields. */
+  canonical_data: Record<string, unknown> | null;
+  warnings: string[];
+  error_message: string | null;
+  processing_time_ms: number | null;
+}
+
+/** Inner error body per Phase 3 §3.1. */
+export interface ApiErrorBody {
+  error: { code: string; message_en: string; message_ka: string };
+}
+
+/** Thrown by the API client on any 4xx/5xx response. */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly messageEn: string;
+  readonly messageKa: string;
+
+  constructor(
+    status: number,
+    code: string,
+    messageEn: string,
+    messageKa: string,
+  ) {
+    super(messageEn);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+    this.messageEn = messageEn;
+    this.messageKa = messageKa;
+  }
+}
