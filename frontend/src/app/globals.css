@@ -1,0 +1,130 @@
+/* === Angar.ai design system ===
+ * Ported from App.html / Hero v2.html design references.
+ * The :root color/font tokens become Tailwind v4 utilities via @theme:
+ *   --color-bg     -> `bg-bg`, `text-bg`, `border-bg`
+ *   --font-serif   -> `font-serif`
+ * Editorial CSS that doesn't map cleanly to utilities (SVG corner folds on
+ * document thumbnails, the sidebar brand mark, named keyframes) lives below.
+ */
+
+@import "tailwindcss";
+
+@theme {
+  --color-bg:          #f6f3ee;
+  --color-bg-2:        #efeae1;
+  --color-paper:       #ffffff;
+  --color-paper-2:     #fbf9f4;
+
+  --color-ink:         #0e1116;
+  --color-ink-2:       #3b424c;
+  --color-ink-3:       #7b8290;
+  --color-ink-4:       #aeb3bd;
+
+  --color-line:        #dbd5c8;
+  --color-line-2:      #e6e0d2;
+  --color-line-3:      #efeadb;
+
+  --color-accent:      #1a3d2e;
+  --color-accent-2:    #2d6a4f;
+  --color-accent-soft: #e9f0eb;
+
+  --color-highlight:   #f0e6c8;
+  --color-warn:        #b88820;
+  --color-warn-soft:   #f7ebd1;
+  --color-error:       #b8342f;
+  --color-error-soft:  #f7dad6;
+
+  --font-sans:  var(--font-inter), "Noto Sans Georgian", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-fraunces), "Noto Serif Georgian", serif;
+  --font-mono:  var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+/* Reset / base ---------------------------------------------------------- */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+body { min-height: 100vh; overflow-x: hidden; }
+
+/* Brand mark in the sidebar -------------------------------------------- */
+/* Reproduces the App.html mockup's tiny "filing cabinet" SVG mark.
+ * Pure CSS so we don't ship an extra image.
+ */
+.brand-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: var(--color-ink);
+  position: relative;
+  flex-shrink: 0;
+}
+.brand-mark::after {
+  content: "";
+  position: absolute;
+  inset: 5px 4px;
+  background: var(--color-bg);
+  border-radius: 1px;
+}
+.brand-mark::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 7px;
+  width: 6px;
+  height: 1.5px;
+  background: var(--color-ink);
+  box-shadow: 0 3px 0 var(--color-ink), 0 6px 0 var(--color-ink);
+}
+
+/* Document thumbnail with the folded-corner trick ---------------------- */
+/* Used in the recent-uploads list and elsewhere a tiny PDF icon shows up.
+ * Variants set the size and the "PDF" label via CSS variables.
+ */
+.doc-thumb {
+  width: 28px;
+  height: 36px;
+  border-radius: 3px;
+  background: #fff;
+  border: 1px solid var(--color-line);
+  display: grid;
+  place-items: end center;
+  font-family: var(--font-mono);
+  font-size: 5.5px;
+  font-weight: 600;
+  color: var(--color-ink-2);
+  padding-bottom: 2px;
+  position: relative;
+  flex-shrink: 0;
+}
+.doc-thumb::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 7px;
+  height: 7px;
+  background: linear-gradient(225deg, var(--color-paper-2) 50%, transparent 50%);
+  border-left: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+}
+.doc-thumb::after { content: "PDF"; }
+
+/* Animations ----------------------------------------------------------- */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
