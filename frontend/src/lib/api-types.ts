@@ -53,6 +53,10 @@ export interface OrganizationDTO {
   id: string;
   name: string;
   plan: string;
+  monthly_extraction_quota: number;
+  monthly_extractions_used: number;
+  /** ISO 8601 UTC timestamp of the next rolling-window reset. */
+  quota_reset_at: string;
 }
 
 export interface SessionResponse {

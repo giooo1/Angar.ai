@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 type Props = {
   used: number;
   total: number;
@@ -7,12 +5,13 @@ type Props = {
 };
 
 /**
- * Sidebar bottom card: monthly extraction usage + plan badge + upgrade link.
- * Real usage data comes from the backend in step 6; for now this accepts
- * hardcoded values from the caller.
+ * Sidebar bottom card: monthly extraction usage + plan badge.
+ *
+ * Step 6: wired to real org quota; "Upgrade" link is intentionally
+ * omitted until there's a real Stripe-backed plan-change UI to link to.
  */
 export function UsageCard({ used, total, plan }: Props) {
-  const pct = Math.min(100, Math.round((used / total) * 100));
+  const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
 
   return (
     <div className="mt-auto p-3 pb-2.5 bg-paper border border-line-2 rounded-lg">
@@ -28,15 +27,7 @@ export function UsageCard({ used, total, plan }: Props) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-ink-3">
-        <span>{plan} plan</span>
-        <Link
-          href="/settings"
-          className="text-accent font-medium no-underline hover:underline"
-        >
-          Upgrade
-        </Link>
-      </div>
+      <div className="mt-2 text-[11px] text-ink-3">{plan} plan</div>
     </div>
   );
 }

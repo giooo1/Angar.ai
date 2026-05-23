@@ -140,7 +140,7 @@ class TestUploadQuota:
         )
         assert r.status_code == 429
         body = r.json()
-        assert body["detail"]["code"] == "QUOTA_EXHAUSTED"
+        assert body["detail"]["error"]["code"] == "QUOTA_EXHAUSTED"
         assert body["detail"]["quota"] == 50
         assert body["detail"]["used"] == 50
         assert "resets_at" in body["detail"]
@@ -205,7 +205,7 @@ class TestReextractQuota:
         _set_used(db_session, test_org, 50)
         r = client.post(f"/api/v1/documents/{upload['document_id']}/extract")
         assert r.status_code == 429
-        assert r.json()["detail"]["code"] == "QUOTA_EXHAUSTED"
+        assert r.json()["detail"]["error"]["code"] == "QUOTA_EXHAUSTED"
 
 
 # ---------------------------------------------------------------------------

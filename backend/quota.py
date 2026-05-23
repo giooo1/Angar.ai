@@ -63,9 +63,11 @@ def check_and_increment_quota(org: Organization) -> None:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={
-                "code": "QUOTA_EXHAUSTED",
-                "message_en": "Monthly extraction quota reached.",
-                "message_ka": "თვის ექსტრაქციების ლიმიტი ამოწურულია.",
+                "error": {
+                    "code": "QUOTA_EXHAUSTED",
+                    "message_en": "Monthly extraction quota reached.",
+                    "message_ka": "თვის ექსტრაქციების ლიმიტი ამოწურულია.",
+                },
                 "quota": quota,
                 "used": org.monthly_extractions_used,
                 "resets_at": _as_aware(org.quota_reset_at).isoformat(),

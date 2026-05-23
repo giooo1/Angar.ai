@@ -26,7 +26,7 @@ export default async function AppShellLayout({
 
   return (
     <div className="grid grid-cols-[240px_1fr] min-h-screen">
-      <Sidebar />
+      <Sidebar organization={session.organization} />
       <div className="flex flex-col min-w-0">
         <Topbar user={session.user} organization={session.organization} />
         {children}

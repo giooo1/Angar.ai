@@ -4,8 +4,13 @@ import {
   SettingsIcon,
   UploadIcon,
 } from "@/components/ui/icons";
+import type { OrganizationDTO } from "@/lib/api-types";
 import { NavItem } from "./nav-item";
 import { UsageCard } from "./usage-card";
+
+type Props = {
+  organization: OrganizationDTO;
+};
 
 /**
  * Left sidebar. 240px wide, sticky to the viewport, with brand mark,
@@ -13,9 +18,12 @@ import { UsageCard } from "./usage-card";
  * (Settings), and the usage card pinned to the bottom.
  *
  * Per the design in App.html. Counts on the nav items are hardcoded
- * for now; will read from the backend in step 7 (Dashboard).
+ * for now; will read from the backend in step 7 (Dashboard). Usage
+ * card is wired to the real org quota as of step 6.
  */
-export function Sidebar() {
+export function Sidebar({ organization }: Props) {
+  const planLabel = organization.plan === "free" ? "Free" : organization.plan;
+
   return (
     <aside className="bg-paper-2 border-r border-line flex flex-col px-3.5 py-4 pb-3.5 sticky top-0 h-screen">
       {/* Brand */}
@@ -47,7 +55,11 @@ export function Sidebar() {
         </NavItem>
       </div>
 
-      <UsageCard used={47} total={200} plan="Pro" />
+      <UsageCard
+        used={organization.monthly_extractions_used}
+        total={organization.monthly_extraction_quota}
+        plan={planLabel}
+      />
     </aside>
   );
 }
