@@ -2,31 +2,37 @@ import { redirect } from "next/navigation";
 
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
+import { getOrgHeaderStats } from "@/lib/api-server";
 import { getServerSession } from "@/lib/auth";
 
 /**
  * App shell layout: 240px sidebar + main column with sticky topbar.
  *
- * Server component — fetches the current session and passes it to the
- * Topbar so it can render the real organization name and user initial.
- * If the session fetch fails (cookie missing or backend rejected it),
- * we redirect to /login. The middleware should catch this earlier, but
- * this is defense in depth for the edge case where the cookie exists
- * but the backend can't validate it (e.g. expired token).
+ * Server component — fetches the current session and the org-level
+ * header stats (documents total for the sidebar count) in parallel,
+ * passing both down to the chrome components. If the session fetch
+ * fails the middleware should already have caught it, but we redirect
+ * here too as defense in depth.
  */
 export default async function AppShellLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession();
+  const [session, headerStats] = await Promise.all([
+    getServerSession(),
+    getOrgHeaderStats(),
+  ]);
   if (!session) {
     redirect("/login");
   }
 
   return (
     <div className="grid grid-cols-[240px_1fr] min-h-screen">
-      <Sidebar organization={session.organization} />
+      <Sidebar
+        organization={session.organization}
+        documentsCount={headerStats.documentsTotal}
+      />
       <div className="flex flex-col min-w-0">
         <Topbar user={session.user} organization={session.organization} />
         {children}

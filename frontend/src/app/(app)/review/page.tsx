@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "@/components/ui/icons";
 import { QueueRow } from "@/components/review-queue/queue-row";
-import { listExtractions } from "@/lib/api";
+import { listExtractionsServer } from "@/lib/api-server";
 
 // Always re-fetch on navigation — the queue changes any time an upload
 // finishes. fetch's `no-store` already covers this client-side; here we
@@ -16,12 +16,12 @@ export const dynamic = "force-dynamic";
  * filtering (low-confidence, needs-review) arrives with the Dashboard.
  */
 export default async function ReviewQueuePage() {
-  let items: Awaited<ReturnType<typeof listExtractions>>["items"] = [];
+  let items: Awaited<ReturnType<typeof listExtractionsServer>>["items"] = [];
   let total = 0;
   let loadError: string | null = null;
 
   try {
-    const data = await listExtractions({ page: 1, pageSize: 25 });
+    const data = await listExtractionsServer({ page: 1, pageSize: 25 });
     items = data.items;
     total = data.total;
   } catch (err) {

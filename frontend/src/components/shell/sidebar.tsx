@@ -10,6 +10,7 @@ import { UsageCard } from "./usage-card";
 
 type Props = {
   organization: OrganizationDTO;
+  documentsCount: number;
 };
 
 /**
@@ -21,7 +22,7 @@ type Props = {
  * for now; will read from the backend in step 7 (Dashboard). Usage
  * card is wired to the real org quota as of step 6.
  */
-export function Sidebar({ organization }: Props) {
+export function Sidebar({ organization, documentsCount }: Props) {
   const planLabel = organization.plan === "free" ? "Free" : organization.plan;
 
   return (
@@ -40,7 +41,11 @@ export function Sidebar({ organization }: Props) {
         <NavItem href="/upload" icon={<UploadIcon />}>
           Upload
         </NavItem>
-        <NavItem href="/dashboard" icon={<DocumentsIcon />} count="1,408">
+        <NavItem
+          href="/dashboard"
+          icon={<DocumentsIcon />}
+          count={documentsCount.toLocaleString()}
+        >
           Documents
         </NavItem>
         <NavItem href="/review" icon={<ReviewIcon />} count={3}>
