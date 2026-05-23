@@ -38,6 +38,42 @@ export interface ListExtractionsResponse {
   page_size: number;
 }
 
+// ---------------------------------------------------------------------------
+// Auth (Phase 4 step 5)
+// ---------------------------------------------------------------------------
+
+export interface UserDTO {
+  id: string;
+  email: string;
+  full_name: string | null;
+  locale: string;
+}
+
+export interface OrganizationDTO {
+  id: string;
+  name: string;
+  plan: string;
+}
+
+export interface SessionResponse {
+  user: UserDTO;
+  organization: OrganizationDTO;
+}
+
+export type MeResponse = SessionResponse;
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  full_name?: string;
+  organization_name: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
 /** Inner error body per Phase 3 §3.1. */
 export interface ApiErrorBody {
   error: { code: string; message_en: string; message_ka: string };

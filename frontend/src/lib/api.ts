@@ -1,6 +1,9 @@
 /**
- * Thin client for the backend's extraction-path API.
+ * Thin client for the backend's HTTP API.
  * Configurable via NEXT_PUBLIC_API_URL; defaults to local dev backend.
+ *
+ * Every fetch sends `credentials: "include"` so the HttpOnly
+ * angar_session cookie set by the backend travels with each request.
  *
  * Throws ApiError on any 4xx/5xx with the backend's bilingual error
  * envelope unpacked (Phase 3 §3.1: { error: { code, message_en, message_ka }}).
@@ -11,12 +14,18 @@ import {
   type ApiErrorBody,
   type ExtractionStatusResponse,
   type ListExtractionsResponse,
+  type LoginRequest,
+  type MeResponse,
+  type RegisterRequest,
+  type SessionResponse,
   type UploadResponse,
 } from "./api-types";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
   "http://localhost:8000";
+
+const JSON_HEADERS = { "Content-Type": "application/json" };
 
 async function unwrapError(res: Response): Promise<never> {
   let code = "UNKNOWN";
@@ -26,7 +35,7 @@ async function unwrapError(res: Response): Promise<never> {
     const body = (await res.json()) as Partial<ApiErrorBody> & {
       detail?: Partial<ApiErrorBody>;
     };
-    // FastAPI wraps the ErrorResponse inside `detail` for HTTPException.
+    // FastAPI wraps ErrorResponse inside `detail` for HTTPException.
     const errBody = body.detail?.error ?? body.error;
     if (errBody) {
       code = errBody.code ?? code;
@@ -39,6 +48,54 @@ async function unwrapError(res: Response): Promise<never> {
   throw new ApiError(res.status, code, en, ka);
 }
 
+// ---------------------------------------------------------------------------
+// Auth (Phase 4 step 5)
+// ---------------------------------------------------------------------------
+
+export async function login(body: LoginRequest): Promise<SessionResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+  return (await res.json()) as SessionResponse;
+}
+
+export async function register(body: RegisterRequest): Promise<SessionResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/register`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+  return (await res.json()) as SessionResponse;
+}
+
+export async function logout(): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+}
+
+export async function me(signal?: AbortSignal): Promise<MeResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/me`, {
+    signal,
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) await unwrapError(res);
+  return (await res.json()) as MeResponse;
+}
+
+// ---------------------------------------------------------------------------
+// Extraction (existing)
+// ---------------------------------------------------------------------------
+
 export async function uploadDocument(
   file: File,
   signal?: AbortSignal,
@@ -49,6 +106,7 @@ export async function uploadDocument(
     method: "POST",
     body: form,
     signal,
+    credentials: "include",
   });
   if (!res.ok) await unwrapError(res);
   return (await res.json()) as UploadResponse;
@@ -58,7 +116,10 @@ export async function getExtraction(
   id: string,
   signal?: AbortSignal,
 ): Promise<ExtractionStatusResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/extractions/${id}`, { signal });
+  const res = await fetch(`${API_BASE}/api/v1/extractions/${id}`, {
+    signal,
+    credentials: "include",
+  });
   if (!res.ok) await unwrapError(res);
   return (await res.json()) as ExtractionStatusResponse;
 }
@@ -69,7 +130,7 @@ export async function reextract(
 ): Promise<UploadResponse> {
   const res = await fetch(
     `${API_BASE}/api/v1/documents/${documentId}/extract`,
-    { method: "POST", signal },
+    { method: "POST", signal, credentials: "include" },
   );
   if (!res.ok) await unwrapError(res);
   return (await res.json()) as UploadResponse;
@@ -79,9 +140,6 @@ export async function reextract(
  * Poll `/extractions/{id}` until status becomes terminal or the timeout
  * fires. Cadence per Phase 3 §3.3: 2s for the first 30s, then 5s, abort
  * after 2 minutes.
- *
- * `onUpdate` fires for every status change including the initial fetch.
- * Returns the terminal extraction state (status = "completed" | "failed").
  */
 export async function pollExtraction(
   extractionId: string,
@@ -128,7 +186,11 @@ export async function listExtractions(
   if (params.page) qs.set("page", String(params.page));
   if (params.pageSize) qs.set("page_size", String(params.pageSize));
   const url = `${API_BASE}/api/v1/extractions${qs.size ? `?${qs}` : ""}`;
-  const res = await fetch(url, { signal, cache: "no-store" });
+  const res = await fetch(url, {
+    signal,
+    cache: "no-store",
+    credentials: "include",
+  });
   if (!res.ok) await unwrapError(res);
   return (await res.json()) as ListExtractionsResponse;
 }
