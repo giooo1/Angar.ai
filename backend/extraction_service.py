@@ -16,6 +16,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+from anthropic import Anthropic
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -42,10 +43,19 @@ def get_extractor(settings: Settings) -> Extractor:
     """
     global _extractor_cache
     if _extractor_cache is None:
+        # Pass the key from Settings explicitly. Pydantic-settings loads
+        # .env into the Settings object but does NOT export to os.environ,
+        # so the SDK's default env-based lookup misses it.
+        client = (
+            Anthropic(api_key=settings.anthropic_api_key)
+            if settings.anthropic_api_key
+            else None
+        )
         _extractor_cache = Extractor(
             model=settings.angar_model,
             prompt_version=settings.angar_prompt_version,
             use_cache=settings.angar_use_cache,
+            client=client,
         )
     return _extractor_cache
 

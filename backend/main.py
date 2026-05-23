@@ -22,6 +22,11 @@ async def _lifespan(app: FastAPI):
             "JWT_SECRET is not configured. Set it in .env (repo root) or as an env var. "
             "The backend refuses to issue session tokens without one."
         )
+    if not settings.anthropic_api_key:
+        raise RuntimeError(
+            "ANTHROPIC_API_KEY is not configured. Set it in .env (repo root) or as an env var. "
+            "The backend refuses to start without one — extractions would fail at runtime."
+        )
     init_db()
     yield
 
