@@ -9,6 +9,7 @@ will show "completed" immediately.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -92,11 +93,14 @@ class UserDTO(BaseModel):
 
 
 class OrganizationDTO(BaseModel):
-    """Public-facing organization shape."""
+    """Public-facing organization shape. Includes live quota (step 6)."""
 
     id: str
     name: str
     plan: str
+    monthly_extraction_quota: int
+    monthly_extractions_used: int
+    quota_reset_at: datetime
 
 
 class SessionResponse(BaseModel):

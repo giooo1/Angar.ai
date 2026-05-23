@@ -30,6 +30,7 @@ from backend.extraction_service import (
     store_uploaded_file,
 )
 from backend.models import Document, Extraction, Organization, User
+from backend.quota import check_and_increment_quota, refund_quota
 from backend.settings import Settings, get_settings
 from backend.storage import FilesystemStorage, Storage
 
@@ -100,6 +101,10 @@ async def upload_document(
     mime = file.content_type or "application/octet-stream"
     filename = file.filename or "upload.bin"
 
+    # Quota gate: bump optimistically here, refund below if the upload
+    # deduplicates onto an existing document (no model call needed).
+    check_and_increment_quota(current_org)
+
     try:
         doc, extraction, is_new = store_uploaded_file(
             content=content,
@@ -112,6 +117,9 @@ async def upload_document(
             user_id=current_user.id,
         )
     except ExtractionServiceError as exc:
+        # Validation failure (size / mime) — no model call was made.
+        refund_quota(current_org)
+        db.commit()
         # Differentiate the two 4xx causes: size vs mime type.
         message = str(exc)
         if "max upload size" in message:
@@ -146,6 +154,10 @@ async def upload_document(
             storage=storage,
             extractor=extractor,
         )
+    else:
+        # Dedup: no new model call, so undo the quota bump.
+        refund_quota(current_org)
+        db.commit()
 
     return UploadResponse(
         document_id=doc.id,
@@ -211,11 +223,19 @@ def reextract_document(
                 f"დოკუმენტი {document_id} ვერ მოიძებნა.",
             ).model_dump(),
         )
+
+    # Re-extract always calls the model — counts against quota.
+    check_and_increment_quota(current_org)
+
     try:
         extraction = create_reextract(
             document_id=document_id, db=db, settings=settings
         )
     except ExtractionServiceError:
+        # Doc disappeared between the org check and create_reextract —
+        # no model call happened, return the quota bump.
+        refund_quota(current_org)
+        db.commit()
         raise HTTPException(
             status_code=404,
             detail=_bilingual_error(

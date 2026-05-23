@@ -12,6 +12,7 @@ tests don't need to call /auth/login.
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterator
 
@@ -73,8 +74,16 @@ def test_user(db_session: Session) -> User:
 
 @pytest.fixture
 def test_org(db_session: Session, test_user: User) -> Organization:
-    """A persisted Organization with test_user as the owner."""
-    org = Organization(name="Test Org")
+    """A persisted Organization with test_user as the owner.
+
+    Quota fields (step 6) start at 0 used / 50 quota / reset 30 days out.
+    """
+    org = Organization(
+        name="Test Org",
+        monthly_extraction_quota=50,
+        monthly_extractions_used=0,
+        quota_reset_at=datetime.now(tz=timezone.utc) + timedelta(days=30),
+    )
     db_session.add(org)
     db_session.flush()
     db_session.add(

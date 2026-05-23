@@ -66,3 +66,12 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return a fresh Settings instance. Called via FastAPI dependency injection."""
     return Settings()
+
+
+# ---------------------------------------------------------------------------
+# Plan → monthly extraction quota (step 6, no Stripe yet)
+# ---------------------------------------------------------------------------
+
+PLAN_QUOTAS: dict[str, int] = {
+    "free": 50,
+}

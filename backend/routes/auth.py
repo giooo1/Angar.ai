@@ -8,7 +8,7 @@ the token directly.
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from email_validator import EmailNotValidError, validate_email
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -33,7 +33,7 @@ from backend.auth import (
 )
 from backend.db import get_db
 from backend.models import Organization, OrganizationMember, User
-from backend.settings import Settings, get_settings
+from backend.settings import PLAN_QUOTAS, Settings, get_settings
 
 router = APIRouter()
 
@@ -93,7 +93,14 @@ def _session_response(user: User, org: Organization) -> SessionResponse:
             full_name=user.full_name,
             locale=user.locale,
         ),
-        organization=OrganizationDTO(id=org.id, name=org.name, plan=org.plan),
+        organization=OrganizationDTO(
+            id=org.id,
+            name=org.name,
+            plan=org.plan,
+            monthly_extraction_quota=org.monthly_extraction_quota,
+            monthly_extractions_used=org.monthly_extractions_used,
+            quota_reset_at=org.quota_reset_at,
+        ),
     )
 
 
@@ -169,7 +176,15 @@ def register(
         full_name=body.full_name,
         last_login_at=datetime.now(tz=timezone.utc),
     )
-    org = Organization(name=body.organization_name.strip())
+    # New orgs always start on "free"; quota field set explicitly so the
+    # row carries it before flush.
+    org = Organization(
+        name=body.organization_name.strip(),
+        plan="free",
+        monthly_extraction_quota=PLAN_QUOTAS["free"],
+        monthly_extractions_used=0,
+        quota_reset_at=datetime.now(tz=timezone.utc) + timedelta(days=30),
+    )
     db.add(user)
     db.add(org)
     db.flush()  # ids populated

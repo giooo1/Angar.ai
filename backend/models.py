@@ -72,7 +72,12 @@ class User(Base):
 
 
 class Organization(Base):
-    """A workspace. Documents and extractions belong to an organization, not a user."""
+    """A workspace. Documents and extractions belong to an organization, not a user.
+
+    Quota fields (step 6): rolling 30-day window. `quota_reset_at` is set
+    at registration time to `created_at + 30 days` and lazily rolled
+    forward by `backend.quota.reset_if_due` whenever an upload is gated.
+    """
 
     __tablename__ = "organizations"
 
@@ -80,6 +85,12 @@ class Organization(Base):
     name: Mapped[str] = mapped_column(String(255))
     plan: Mapped[str] = mapped_column(String(16), default="free")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    monthly_extraction_quota: Mapped[int] = mapped_column(Integer, default=50)
+    monthly_extractions_used: Mapped[int] = mapped_column(Integer, default=0)
+    quota_reset_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_retention_default
+    )
 
     members: Mapped[list["OrganizationMember"]] = relationship(
         back_populates="organization", cascade="all, delete-orphan"
