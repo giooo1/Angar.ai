@@ -1,0 +1,238 @@
+"""End-to-end tests for the auth flow.
+
+Unlike `test_routes.py`, this file does NOT override `get_current_user`
+/ `get_current_org` — it exercises the real JWT cookie path so the auth
+module's behavior is actually verified.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import jwt
+import pytest
+from fastapi.testclient import TestClient
+
+from backend.auth import encode_token
+from backend.db import get_db
+from backend.main import app
+from backend.routes.extraction import get_settings_dep
+from backend.settings import Settings
+
+
+JWT_SECRET = "test-jwt-secret-for-auth-tests"
+
+
+@pytest.fixture
+def auth_client(db_session, tmp_path: Path) -> TestClient:
+    """A TestClient with DB / settings overridden but NO auth override.
+
+    Lets the real /auth/register and /auth/login paths run; the session
+    cookie is set by the backend and the TestClient carries it forward
+    on subsequent requests.
+    """
+    settings = Settings(
+        database_url=f"sqlite:///{tmp_path / 'test.db'}",
+        storage_dir=tmp_path / "files",
+        anthropic_api_key="sk-test-not-real",
+        jwt_secret=JWT_SECRET,
+    )
+
+    def _db_override():
+        yield db_session
+
+    app.dependency_overrides[get_db] = _db_override
+    app.dependency_overrides[get_settings_dep] = lambda: settings
+    # Also override get_settings used inside auth deps (different import path).
+    from backend.settings import get_settings as _real_get_settings
+    app.dependency_overrides[_real_get_settings] = lambda: settings
+
+    yield TestClient(app)
+
+    app.dependency_overrides.clear()
+
+
+def _register(client: TestClient, **overrides) -> dict:
+    body = {
+        "email": "alice@example.com",
+        "password": "hunter2pw",
+        "full_name": "Alice",
+        "organization_name": "Alice's Org",
+        **overrides,
+    }
+    return client.post("/api/v1/auth/register", json=body)
+
+
+# ---------------------------------------------------------------------------
+# register
+# ---------------------------------------------------------------------------
+
+class TestRegister:
+    def test_happy_path_returns_201_and_sets_cookie(self, auth_client: TestClient) -> None:
+        r = _register(auth_client)
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["user"]["email"] == "alice@example.com"
+        assert body["user"]["full_name"] == "Alice"
+        assert body["organization"]["name"] == "Alice's Org"
+        assert "angar_session" in r.cookies
+
+    def test_normalizes_email_to_lowercase(self, auth_client: TestClient) -> None:
+        r = _register(auth_client, email="ALICE@Example.COM")
+        body = r.json()
+        assert body["user"]["email"] == "alice@example.com"
+
+    def test_duplicate_email_returns_409(self, auth_client: TestClient) -> None:
+        _register(auth_client)
+        r = _register(auth_client, organization_name="Another Org")
+        assert r.status_code == 409
+        assert r.json()["detail"]["error"]["code"] == "EMAIL_TAKEN"
+
+    def test_weak_password_returns_400(self, auth_client: TestClient) -> None:
+        r = _register(auth_client, password="short")
+        assert r.status_code == 400
+        assert r.json()["detail"]["error"]["code"] == "WEAK_PASSWORD"
+
+    def test_password_without_digits_returns_400(self, auth_client: TestClient) -> None:
+        r = _register(auth_client, password="onlyletters")
+        assert r.status_code == 400
+        assert r.json()["detail"]["error"]["code"] == "WEAK_PASSWORD"
+
+    def test_blank_org_name_returns_400(self, auth_client: TestClient) -> None:
+        r = _register(auth_client, organization_name="   ")
+        assert r.status_code == 400
+        assert r.json()["detail"]["error"]["code"] == "INVALID_ORG_NAME"
+
+    def test_invalid_email_returns_400(self, auth_client: TestClient) -> None:
+        r = _register(auth_client, email="not-an-email")
+        assert r.status_code == 400
+        assert r.json()["detail"]["error"]["code"] == "INVALID_EMAIL"
+
+
+# ---------------------------------------------------------------------------
+# login
+# ---------------------------------------------------------------------------
+
+class TestLogin:
+    def test_happy_path_returns_200_and_sets_cookie(self, auth_client: TestClient) -> None:
+        _register(auth_client)
+        r = auth_client.post(
+            "/api/v1/auth/login",
+            json={"email": "alice@example.com", "password": "hunter2pw"},
+        )
+        assert r.status_code == 200
+        assert r.json()["user"]["email"] == "alice@example.com"
+        assert "angar_session" in r.cookies
+
+    def test_wrong_password_returns_401_with_generic_code(
+        self, auth_client: TestClient
+    ) -> None:
+        _register(auth_client)
+        r = auth_client.post(
+            "/api/v1/auth/login",
+            json={"email": "alice@example.com", "password": "WRONG-PW"},
+        )
+        assert r.status_code == 401
+        assert r.json()["detail"]["error"]["code"] == "INVALID_CREDENTIALS"
+
+    def test_unknown_email_returns_401_with_same_code(
+        self, auth_client: TestClient
+    ) -> None:
+        """No user-enumeration: unknown email gives the same code as wrong password."""
+        r = auth_client.post(
+            "/api/v1/auth/login",
+            json={"email": "ghost@example.com", "password": "anything-1"},
+        )
+        assert r.status_code == 401
+        assert r.json()["detail"]["error"]["code"] == "INVALID_CREDENTIALS"
+
+
+# ---------------------------------------------------------------------------
+# logout
+# ---------------------------------------------------------------------------
+
+class TestLogout:
+    def test_clears_cookie(self, auth_client: TestClient) -> None:
+        _register(auth_client)
+        r = auth_client.post("/api/v1/auth/logout")
+        assert r.status_code == 204
+        # Subsequent /me without a cookie returns 401.
+        auth_client.cookies.clear()
+        r2 = auth_client.get("/api/v1/me")
+        assert r2.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# /me
+# ---------------------------------------------------------------------------
+
+class TestMe:
+    def test_returns_user_with_cookie(self, auth_client: TestClient) -> None:
+        _register(auth_client)
+        r = auth_client.get("/api/v1/me")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["user"]["email"] == "alice@example.com"
+        assert body["organization"]["name"] == "Alice's Org"
+
+    def test_without_cookie_returns_401(self, auth_client: TestClient) -> None:
+        r = auth_client.get("/api/v1/me")
+        assert r.status_code == 401
+        assert r.json()["detail"]["error"]["code"] == "UNAUTHENTICATED"
+
+    def test_expired_token_returns_401(self, auth_client: TestClient) -> None:
+        _register(auth_client)
+        # Forge an expired token signed with the real test key.
+        now = datetime.now(tz=timezone.utc)
+        expired = jwt.encode(
+            {
+                "sub": "fake",
+                "org_id": "fake",
+                "iat": int((now - timedelta(hours=2)).timestamp()),
+                "exp": int((now - timedelta(hours=1)).timestamp()),
+            },
+            JWT_SECRET,
+            algorithm="HS256",
+        )
+        auth_client.cookies.set("angar_session", expired)
+        r = auth_client.get("/api/v1/me")
+        assert r.status_code == 401
+
+    def test_malformed_token_returns_401(self, auth_client: TestClient) -> None:
+        auth_client.cookies.set("angar_session", "definitely.not.a.jwt")
+        r = auth_client.get("/api/v1/me")
+        assert r.status_code == 401
+
+    def test_token_with_unknown_user_returns_401(self, auth_client: TestClient) -> None:
+        from backend.settings import Settings
+
+        token = encode_token(
+            user_id="ghost-user-id",
+            org_id="ghost-org-id",
+            settings=Settings(jwt_secret=JWT_SECRET),
+        )
+        auth_client.cookies.set("angar_session", token)
+        r = auth_client.get("/api/v1/me")
+        assert r.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Gated extraction endpoint actually rejects unauthenticated callers
+# ---------------------------------------------------------------------------
+
+class TestExtractionGating:
+    def test_list_extractions_without_auth_returns_401(
+        self, auth_client: TestClient
+    ) -> None:
+        r = auth_client.get("/api/v1/extractions")
+        assert r.status_code == 401
+        assert r.json()["detail"]["error"]["code"] == "UNAUTHENTICATED"
+
+    def test_list_extractions_after_register_returns_200(
+        self, auth_client: TestClient
+    ) -> None:
+        _register(auth_client)
+        r = auth_client.get("/api/v1/extractions")
+        assert r.status_code == 200
+        assert r.json()["items"] == []  # fresh org, no uploads

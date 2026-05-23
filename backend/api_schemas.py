@@ -59,3 +59,48 @@ class ErrorResponse(BaseModel):
     """Top-level error envelope per Phase 3 §3.1."""
 
     error: ApiError
+
+
+# ---------------------------------------------------------------------------
+# Auth DTOs (Phase 4 step 5)
+# ---------------------------------------------------------------------------
+
+
+class RegisterRequest(BaseModel):
+    """Body of POST /api/v1/auth/register."""
+
+    email: str
+    password: str
+    full_name: str | None = None
+    organization_name: str
+
+
+class LoginRequest(BaseModel):
+    """Body of POST /api/v1/auth/login."""
+
+    email: str
+    password: str
+
+
+class UserDTO(BaseModel):
+    """Public-facing user shape. Never includes the password hash."""
+
+    id: str
+    email: str
+    full_name: str | None
+    locale: str
+
+
+class OrganizationDTO(BaseModel):
+    """Public-facing organization shape."""
+
+    id: str
+    name: str
+    plan: str
+
+
+class SessionResponse(BaseModel):
+    """Returned by POST /auth/register, POST /auth/login, GET /me."""
+
+    user: UserDTO
+    organization: OrganizationDTO

@@ -20,6 +20,7 @@ from backend.api_schemas import (
     ListExtractionsResponse,
     UploadResponse,
 )
+from backend.auth import get_current_org, get_current_user
 from backend.db import get_db
 from backend.extraction_service import (
     ExtractionServiceError,
@@ -28,7 +29,7 @@ from backend.extraction_service import (
     run_extraction,
     store_uploaded_file,
 )
-from backend.models import Document, Extraction
+from backend.models import Document, Extraction, Organization, User
 from backend.settings import Settings, get_settings
 from backend.storage import FilesystemStorage, Storage
 
@@ -92,6 +93,8 @@ async def upload_document(
     storage: Storage = Depends(get_storage),
     extractor: Extractor = Depends(get_extractor_dep),
     settings: Settings = Depends(get_settings_dep),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_org),
 ) -> UploadResponse:
     content = await file.read()
     mime = file.content_type or "application/octet-stream"
@@ -105,6 +108,8 @@ async def upload_document(
             storage=storage,
             db=db,
             settings=settings,
+            org_id=current_org.id,
+            user_id=current_user.id,
         )
     except ExtractionServiceError as exc:
         # Differentiate the two 4xx causes: size vs mime type.
@@ -161,9 +166,11 @@ async def upload_document(
 def get_extraction(
     extraction_id: str = Path(..., description="Extraction ID returned by upload."),
     db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_org),
 ) -> ExtractionStatusResponse:
     extraction = db.get(Extraction, extraction_id)
-    if extraction is None:
+    if extraction is None or extraction.document.organization_id != current_org.id:
+        # Same 404 for not-found vs wrong-org — no enumeration of other orgs' ids.
         raise HTTPException(
             status_code=404,
             detail=_bilingual_error(
@@ -191,7 +198,19 @@ def reextract_document(
     storage: Storage = Depends(get_storage),
     extractor: Extractor = Depends(get_extractor_dep),
     settings: Settings = Depends(get_settings_dep),
+    current_org: Organization = Depends(get_current_org),
 ) -> UploadResponse:
+    # Verify org ownership before kicking off a new extraction.
+    doc = db.get(Document, document_id)
+    if doc is None or doc.organization_id != current_org.id:
+        raise HTTPException(
+            status_code=404,
+            detail=_bilingual_error(
+                "DOCUMENT_NOT_FOUND",
+                f"Document {document_id} not found.",
+                f"დოკუმენტი {document_id} ვერ მოიძებნა.",
+            ).model_dump(),
+        )
     try:
         extraction = create_reextract(
             document_id=document_id, db=db, settings=settings
@@ -230,15 +249,19 @@ def get_document_file(
     document_id: str = Path(...),
     db: Session = Depends(get_db),
     storage: Storage = Depends(get_storage),
+    current_org: Organization = Depends(get_current_org),
 ) -> Response:
     """Stream the original uploaded PDF/image bytes back to the client.
 
-    Used by the Review screen's iframe in the frontend. No auth gate yet
-    — anyone with a known document UUID can fetch the file. Phase 4 step 5
-    will tighten this when auth lands.
+    Gated by the current organization — a doc belonging to a different
+    org returns 404 (not 403) so we don't leak existence to other orgs.
     """
     doc = db.get(Document, document_id)
-    if doc is None or doc.deleted_at is not None:
+    if (
+        doc is None
+        or doc.deleted_at is not None
+        or doc.organization_id != current_org.id
+    ):
         raise HTTPException(
             status_code=404,
             detail=_bilingual_error(
@@ -284,17 +307,14 @@ def list_extractions(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
-    settings: Settings = Depends(get_settings_dep),
+    current_org: Organization = Depends(get_current_org),
 ) -> ListExtractionsResponse:
     """List recent extractions, newest first, filtered to the caller's org.
-
-    Without auth (step 5 work) the org is the stubbed `demo-org`. Once auth
-    lands the org gets pulled from the request principal instead.
 
     Page size capped at 100 so a misbehaving client can't pull the whole
     table at once.
     """
-    org_id = settings.default_org_id
+    org_id = current_org.id
 
     base = (
         select(Extraction)

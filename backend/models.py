@@ -44,6 +44,71 @@ def _retention_default() -> datetime:
     return _utcnow() + timedelta(days=30)
 
 
+# ---------------------------------------------------------------------------
+# Auth tables (Phase 4 step 5)
+# ---------------------------------------------------------------------------
+
+
+class User(Base):
+    """A real human account. argon2id-hashed password lives here.
+
+    Email is the login identity and must be unique. Multi-org membership
+    isn't supported in step 5 — every user belongs to exactly one org.
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_str)
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    full_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    locale: Mapped[str] = mapped_column(String(8), default="en")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    memberships: Mapped[list["OrganizationMember"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class Organization(Base):
+    """A workspace. Documents and extractions belong to an organization, not a user."""
+
+    __tablename__ = "organizations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_str)
+    name: Mapped[str] = mapped_column(String(255))
+    plan: Mapped[str] = mapped_column(String(16), default="free")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    members: Mapped[list["OrganizationMember"]] = relationship(
+        back_populates="organization", cascade="all, delete-orphan"
+    )
+
+
+class OrganizationMember(Base):
+    """Join row between User and Organization with a per-org role."""
+
+    __tablename__ = "organization_members"
+
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    role: Mapped[str] = mapped_column(String(16), default="member")  # owner | admin | member
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="memberships")
+    organization: Mapped["Organization"] = relationship(back_populates="members")
+
+
+# ---------------------------------------------------------------------------
+# Document + Extraction
+# ---------------------------------------------------------------------------
+
+
 class Document(Base):
     """One row per uploaded file. Dedup by (organization_id, file_sha256)."""
 
@@ -54,8 +119,12 @@ class Document(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_str)
 
-    organization_id: Mapped[str] = mapped_column(String(64), index=True)
-    uploaded_by_user_id: Mapped[str] = mapped_column(String(64))
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    uploaded_by_user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT")
+    )
 
     original_filename: Mapped[str] = mapped_column(String(512))
     file_sha256: Mapped[str] = mapped_column(String(64), index=True)

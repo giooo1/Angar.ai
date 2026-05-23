@@ -20,6 +20,7 @@ from angar_schema.canonical import (
     DocumentType,
     ExtractionMetadata,
 )
+from backend.auth import get_current_org, get_current_user
 from backend.db import get_db
 from backend.main import app
 from backend.routes.extraction import (
@@ -59,12 +60,17 @@ def _success(doc_num: str = "TEST-1") -> ExtractionResult:
 
 
 @pytest.fixture
-def client(db_session, tmp_storage, tmp_path) -> TestClient:
-    """A TestClient with every external dependency overridden."""
+def client(db_session, tmp_storage, tmp_path, test_user, test_org) -> TestClient:
+    """A TestClient with every external dependency overridden.
+
+    Auth is stubbed: get_current_user / get_current_org return the
+    fixture user/org so route tests don't need to call /auth/login.
+    """
     settings = Settings(
         database_url=f"sqlite:///{tmp_path / 'test.db'}",
         storage_dir=tmp_path / "files",
         anthropic_api_key="sk-test-not-real",
+        jwt_secret="test-jwt-secret",
     )
 
     mock_extractor = MagicMock()
@@ -79,6 +85,8 @@ def client(db_session, tmp_storage, tmp_path) -> TestClient:
     app.dependency_overrides[get_storage] = lambda: tmp_storage
     app.dependency_overrides[get_extractor_dep] = lambda: mock_extractor
     app.dependency_overrides[get_settings_dep] = lambda: settings
+    app.dependency_overrides[get_current_user] = lambda: test_user
+    app.dependency_overrides[get_current_org] = lambda: test_org
 
     yield TestClient(app)
 

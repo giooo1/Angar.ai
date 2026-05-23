@@ -47,12 +47,20 @@ class Settings(BaseSettings):
         "image/heic",
     )
 
-    # --- Multi-tenancy stubs (real auth lands in Phase 4 step 5) ---
+    # --- Multi-tenancy stubs (used only in tests now; production paths require a real user) ---
     default_org_id: str = Field(default="demo-org")
     default_user_id: str = Field(default="demo-user")
 
     # --- File retention ---
     retention_days: int = Field(default=30)
+
+    # --- Auth: JWT + session cookie (Phase 4 step 5) ---
+    jwt_secret: str = Field(default="", description="HS256 signing key. REQUIRED at runtime.")
+    jwt_algorithm: str = Field(default="HS256")
+    session_cookie_name: str = Field(default="angar_session")
+    session_max_age_seconds: int = Field(default=7 * 24 * 3600)
+    cookie_secure: bool = Field(default=False)  # set true in production over HTTPS
+    cookie_samesite: str = Field(default="lax")  # "lax" | "strict" | "none"
 
 
 def get_settings() -> Settings:

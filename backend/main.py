@@ -11,10 +11,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.db import init_db
+from backend.settings import get_settings
 
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
+    settings = get_settings()
+    if not settings.jwt_secret:
+        raise RuntimeError(
+            "JWT_SECRET is not configured. Set it in .env (repo root) or as an env var. "
+            "The backend refuses to issue session tokens without one."
+        )
     init_db()
     yield
 
@@ -43,7 +50,9 @@ def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# Routes are registered as they land. Step 2 adds the extraction router.
+# Routes are registered as they land. Step 2 adds the extraction router; step 5 adds auth.
+from backend.routes.auth import router as auth_router  # noqa: E402
 from backend.routes.extraction import router as extraction_router  # noqa: E402
 
+app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(extraction_router, prefix="/api/v1", tags=["extraction"])

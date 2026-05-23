@@ -95,7 +95,9 @@ def _mock_extractor(result: ExtractionResult) -> MagicMock:
 # ---------------------------------------------------------------------------
 
 class TestStoreUploadedFile:
-    def test_creates_doc_and_extraction(self, db_session, tmp_storage, tmp_path) -> None:
+    def test_creates_doc_and_extraction(
+        self, db_session, tmp_storage, tmp_path, test_user, test_org
+    ) -> None:
         s = _settings(tmp_path)
         doc, ex, is_new = store_uploaded_file(
             content=b"hello",
@@ -104,24 +106,31 @@ class TestStoreUploadedFile:
             storage=tmp_storage,
             db=db_session,
             settings=s,
+            org_id=test_org.id,
+            user_id=test_user.id,
         )
         assert is_new is True
         assert doc.original_filename == "invoice.pdf"
         assert doc.file_size_bytes == 5
-        assert doc.organization_id == "demo-org"
+        assert doc.organization_id == test_org.id
+        assert doc.uploaded_by_user_id == test_user.id
         assert tmp_storage.exists(doc.storage_path)
         assert ex.status == "pending"
         assert ex.document_id == doc.id
 
-    def test_dedupes_same_content_same_org(self, db_session, tmp_storage, tmp_path) -> None:
+    def test_dedupes_same_content_same_org(
+        self, db_session, tmp_storage, tmp_path, test_user, test_org
+    ) -> None:
         s = _settings(tmp_path)
         d1, e1, new1 = store_uploaded_file(
             content=b"same", filename="a.pdf", mime="application/pdf",
             storage=tmp_storage, db=db_session, settings=s,
+            org_id=test_org.id, user_id=test_user.id,
         )
         d2, e2, new2 = store_uploaded_file(
             content=b"same", filename="a-dupe.pdf", mime="application/pdf",
             storage=tmp_storage, db=db_session, settings=s,
+            org_id=test_org.id, user_id=test_user.id,
         )
         assert new1 is True
         assert new2 is False
@@ -129,40 +138,61 @@ class TestStoreUploadedFile:
         assert e1.id == e2.id
 
     def test_same_content_different_orgs_creates_separate_docs(
-        self, db_session, tmp_storage, tmp_path
+        self, db_session, tmp_storage, tmp_path, test_user, test_org
     ) -> None:
+        """Need a second org to test cross-org isolation."""
+        from backend.models import Organization, OrganizationMember
+
         s = _settings(tmp_path)
+        other_org = Organization(name="Other Org")
+        db_session.add(other_org)
+        db_session.flush()
+        db_session.add(
+            OrganizationMember(
+                organization_id=other_org.id,
+                user_id=test_user.id,
+                role="member",
+            )
+        )
+        db_session.commit()
+
         d1, _, new1 = store_uploaded_file(
             content=b"x", filename="a.pdf", mime="application/pdf",
             storage=tmp_storage, db=db_session, settings=s,
-            org_id="org-a",
+            org_id=test_org.id, user_id=test_user.id,
         )
         d2, _, new2 = store_uploaded_file(
             content=b"x", filename="a.pdf", mime="application/pdf",
             storage=tmp_storage, db=db_session, settings=s,
-            org_id="org-b",
+            org_id=other_org.id, user_id=test_user.id,
         )
         assert new1 is True
         assert new2 is True
         assert d1.id != d2.id
-        assert d1.organization_id == "org-a"
-        assert d2.organization_id == "org-b"
+        assert d1.organization_id == test_org.id
+        assert d2.organization_id == other_org.id
 
-    def test_rejects_oversize_file(self, db_session, tmp_storage, tmp_path) -> None:
+    def test_rejects_oversize_file(
+        self, db_session, tmp_storage, tmp_path, test_user, test_org
+    ) -> None:
         s = _settings(tmp_path)
         s.max_upload_bytes = 4  # type: ignore[misc]
         with pytest.raises(ExtractionServiceError, match="max upload size"):
             store_uploaded_file(
                 content=b"too long", filename="x.pdf", mime="application/pdf",
                 storage=tmp_storage, db=db_session, settings=s,
+                org_id=test_org.id, user_id=test_user.id,
             )
 
-    def test_rejects_disallowed_mime(self, db_session, tmp_storage, tmp_path) -> None:
+    def test_rejects_disallowed_mime(
+        self, db_session, tmp_storage, tmp_path, test_user, test_org
+    ) -> None:
         s = _settings(tmp_path)
         with pytest.raises(ExtractionServiceError, match="mime type"):
             store_uploaded_file(
                 content=b"x", filename="x.txt", mime="text/plain",
                 storage=tmp_storage, db=db_session, settings=s,
+                org_id=test_org.id, user_id=test_user.id,
             )
 
 
@@ -171,11 +201,14 @@ class TestStoreUploadedFile:
 # ---------------------------------------------------------------------------
 
 class TestRunExtraction:
-    def test_success_populates_canonical(self, db_session, tmp_storage, tmp_path) -> None:
+    def test_success_populates_canonical(
+        self, db_session, tmp_storage, tmp_path, test_user, test_org
+    ) -> None:
         s = _settings(tmp_path)
         doc, ex, _ = store_uploaded_file(
             content=b"pdf-bytes", filename="x.pdf", mime="application/pdf",
             storage=tmp_storage, db=db_session, settings=s,
+            org_id=test_org.id, user_id=test_user.id,
         )
         extractor = _mock_extractor(_success_result())
         result_ex = run_extraction(
@@ -189,11 +222,14 @@ class TestRunExtraction:
         assert result_ex.error_message is None
         extractor.extract.assert_called_once()
 
-    def test_parse_failure_marks_failed(self, db_session, tmp_storage, tmp_path) -> None:
+    def test_parse_failure_marks_failed(
+        self, db_session, tmp_storage, tmp_path, test_user, test_org
+    ) -> None:
         s = _settings(tmp_path)
         doc, ex, _ = store_uploaded_file(
             content=b"pdf-bytes", filename="x.pdf", mime="application/pdf",
             storage=tmp_storage, db=db_session, settings=s,
+            org_id=test_org.id, user_id=test_user.id,
         )
         extractor = _mock_extractor(_parse_fail_result())
         result_ex = run_extraction(
@@ -203,11 +239,14 @@ class TestRunExtraction:
         assert result_ex.canonical_data is None
         assert "json decode" in (result_ex.error_message or "")
 
-    def test_exception_in_extractor_marks_failed(self, db_session, tmp_storage, tmp_path) -> None:
+    def test_exception_in_extractor_marks_failed(
+        self, db_session, tmp_storage, tmp_path, test_user, test_org
+    ) -> None:
         s = _settings(tmp_path)
         doc, ex, _ = store_uploaded_file(
             content=b"pdf-bytes", filename="x.pdf", mime="application/pdf",
             storage=tmp_storage, db=db_session, settings=s,
+            org_id=test_org.id, user_id=test_user.id,
         )
         extractor = MagicMock()
         extractor.model = "claude-sonnet-4-6"
@@ -233,11 +272,14 @@ class TestRunExtraction:
 # ---------------------------------------------------------------------------
 
 class TestCreateReextract:
-    def test_creates_new_pending_extraction(self, db_session, tmp_storage, tmp_path) -> None:
+    def test_creates_new_pending_extraction(
+        self, db_session, tmp_storage, tmp_path, test_user, test_org
+    ) -> None:
         s = _settings(tmp_path)
         doc, ex1, _ = store_uploaded_file(
             content=b"x", filename="x.pdf", mime="application/pdf",
             storage=tmp_storage, db=db_session, settings=s,
+            org_id=test_org.id, user_id=test_user.id,
         )
         ex2 = create_reextract(document_id=doc.id, db=db_session, settings=s)
         assert ex2.id != ex1.id

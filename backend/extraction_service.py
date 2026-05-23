@@ -68,8 +68,8 @@ def store_uploaded_file(
     storage: Storage,
     db: Session,
     settings: Settings,
-    org_id: str | None = None,
-    user_id: str | None = None,
+    org_id: str,
+    user_id: str,
 ) -> tuple[Document, Extraction, bool]:
     """Persist an uploaded file and create matching DB rows.
 
@@ -78,6 +78,9 @@ def store_uploaded_file(
     (org_id, file_sha256) row was reused. When reused, the latest
     Extraction for that Document is returned — caller decides whether
     to also re-extract.
+
+    `org_id` and `user_id` are REQUIRED (step 5 auth). Routes pass the
+    authenticated org/user; tests pass the test fixtures' ids.
     """
     if len(content) > settings.max_upload_bytes:
         raise ExtractionServiceError(
@@ -88,8 +91,6 @@ def store_uploaded_file(
             f"mime type {mime!r} not allowed; allowed: {settings.allowed_mime_types}"
         )
 
-    org_id = org_id or settings.default_org_id
-    user_id = user_id or settings.default_user_id
     file_sha = sha256_hex(content)
 
     existing = db.execute(
