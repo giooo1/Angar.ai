@@ -2,25 +2,35 @@
 
 import { useParams } from "next/navigation";
 
-import { ActionBar } from "@/components/review/action-bar";
+import { AcceptanceBanner } from "@/components/review/acceptance-banner";
+import { DocumentStrip } from "@/components/review/document-strip";
 import { ExtractionErrorCard } from "@/components/review/extraction-error-card";
-import { ExtractionPane } from "@/components/review/extraction-pane";
 import { FileBar } from "@/components/review/file-bar";
+import { FlagsBlock } from "@/components/review/flags-block";
+import { LineItemsTable } from "@/components/review/line-items-table";
+import { NotesPanel } from "@/components/review/notes-panel";
+import { PartyBlock } from "@/components/review/party-block";
 import { PdfPane } from "@/components/review/pdf-pane";
+import { ReviewActionBar } from "@/components/review/review-action-bar";
+import { RiskStrip } from "@/components/review/risk-strip";
+import { TotalsBlock } from "@/components/review/totals-block";
 import { useExtraction } from "@/hooks/use-extraction";
 import { documentFileUrl } from "@/lib/api";
+import { countByBucket, meanConfidence } from "@/lib/confidence";
 
 /**
- * Review screen for a single extraction.
+ * Review v2 — confidence-first.
  *
- * Layout per App.html `<section data-screen="review">`:
- *   FileBar              (filename + status + re-extract)
- *   two-pane grid:
- *     PdfPane            (iframe of the original PDF — left)
- *     ExtractionPane     (all CanonicalInvoice fields — right)
- *   ActionBar            (sticky bottom; stubbed Approve/Export)
+ * Left: sticky PDF pane with a zoom toolbar (buttons visual-only for v1).
+ * Right: acceptance banner → risk strip → Document / Seller / Buyer
+ *        / Line items / Totals / Flags / Notes → sticky action bar.
  *
- * Read-only in step 4. Corrections + Export come later.
+ * Per-field confidence comes from `data.field_confidence` (backend
+ * heuristic, WS2). The risk strip counts each field into high/med/low
+ * buckets so the user can scan for what needs attention at a glance.
+ *
+ * Failed extractions still render `<ExtractionErrorCard>` for the
+ * right pane (unchanged from WS2).
  */
 export default function ReviewDetailPage() {
   const params = useParams<{ extraction_id: string }>();
@@ -62,18 +72,76 @@ export default function ReviewDetailPage() {
   }
 
   const canonical = data.canonical_data;
+  const confidence = data.field_confidence ?? {};
+  const overall = meanConfidence(confidence);
+  const buckets = countByBucket(confidence);
 
   return (
-    <main className="px-10 py-6 pb-2 w-full max-w-[1480px]">
+    <main className="px-8 py-6 pb-2 w-full max-w-[1480px]">
       <FileBar extraction={data} canonical={canonical} />
 
-      <div className="grid grid-cols-[1fr_1.05fr] gap-4 items-start">
+      <div className="grid grid-cols-[1fr_1fr] gap-4 items-start">
         <PdfPane
           url={documentFileUrl(data.document_id)}
           filename={canonical?.extraction.source_filename ?? "document"}
         />
+
         {canonical ? (
-          <ExtractionPane canonical={canonical} />
+          <div className="flex flex-col gap-3.5">
+            <AcceptanceBanner
+              accepted={canonical.accepted}
+              rejectionReason={canonical.rejection_reason}
+              overall={overall}
+              confidentCount={buckets.high}
+              needsReviewCount={buckets.med + buckets.low}
+            />
+            <RiskStrip
+              high={buckets.high}
+              med={buckets.med}
+              low={buckets.low}
+            />
+            <DocumentStrip
+              extractionId={data.extraction_id}
+              documentNumber={canonical.document_number}
+              documentDate={canonical.document_date}
+              currency={canonical.document_currency}
+              confidence={confidence}
+            />
+            <PartyBlock
+              side="seller"
+              title="Seller"
+              letter="S"
+              party={canonical.seller}
+              confidence={confidence}
+              extractionId={data.extraction_id}
+            />
+            <PartyBlock
+              side="buyer"
+              title="Buyer"
+              letter="B"
+              party={canonical.buyer}
+              confidence={confidence}
+              extractionId={data.extraction_id}
+            />
+            <LineItemsTable items={canonical.items} />
+            <TotalsBlock
+              extractionId={data.extraction_id}
+              subtotal={canonical.subtotal_total}
+              vat={canonical.vat_total}
+              discount={canonical.discount_total}
+              shipping={canonical.shipping_cost}
+              grand={canonical.grand_total}
+              confidence={confidence}
+            />
+            <FlagsBlock canonical={canonical} />
+            <NotesPanel
+              notes={canonical.extraction_notes}
+              warnings={data.warnings}
+              vatTreatmentReason={canonical.vat_treatment_reason}
+              rejectionReason={canonical.rejection_reason}
+            />
+            <ReviewActionBar documentId={data.document_id} />
+          </div>
         ) : (
           <ExtractionErrorCard
             errorCode={data.error_code}
@@ -81,12 +149,6 @@ export default function ReviewDetailPage() {
           />
         )}
       </div>
-
-      <ActionBar
-        canonical={canonical}
-        promptVersion={data.prompt_version}
-        modelVersion={data.model_version}
-      />
     </main>
   );
 }

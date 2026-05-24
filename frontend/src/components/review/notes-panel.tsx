@@ -1,5 +1,3 @@
-import { Section } from "./section";
-
 type Props = {
   notes: string[];
   warnings: string[];
@@ -8,10 +6,9 @@ type Props = {
 };
 
 /**
- * Combined "Notes" section showing every free-text signal the
- * extraction surfaced: extraction_notes, warnings, vat_treatment_reason,
- * rejection_reason. Each rendered under a small heading; the section as
- * a whole hides if nothing is present.
+ * Collapsible "Extraction notes" block. Renders nothing when there's
+ * no content. Open by default so users see operator hints without an
+ * extra click.
  */
 export function NotesPanel({
   notes,
@@ -27,38 +24,44 @@ export function NotesPanel({
   if (!hasContent) return null;
 
   return (
-    <Section badge="N" title="Notes">
-      <div className="px-4 py-3.5 flex flex-col gap-3 text-[12.5px] text-ink-2 leading-[1.55]">
-        {rejectionReason && (
-          <NoteBlock label="Rejection reason">{rejectionReason}</NoteBlock>
-        )}
-        {vatTreatmentReason && (
-          <NoteBlock label="VAT treatment reason">{vatTreatmentReason}</NoteBlock>
-        )}
-        {notes.length > 0 && (
-          <NoteBlock label="Extraction notes">
-            <ul className="m-0 pl-4 list-disc">
-              {notes.map((n, i) => (
-                <li key={i} className="mb-1">
-                  {n}
-                </li>
-              ))}
-            </ul>
-          </NoteBlock>
-        )}
-        {warnings.length > 0 && (
-          <NoteBlock label="Warnings">
-            <ul className="m-0 pl-4 list-disc">
-              {warnings.map((w, i) => (
-                <li key={i} className="mb-1 text-warn">
-                  {w}
-                </li>
-              ))}
-            </ul>
-          </NoteBlock>
-        )}
-      </div>
-    </Section>
+    <div className="bg-paper border border-line rounded-xl overflow-hidden">
+      <details className="p-4" open>
+        <summary className="cursor-pointer outline-none list-none font-mono text-[10.5px] text-ink-3 tracking-[0.08em] uppercase font-medium inline-flex items-center gap-1.5">
+          <span className="inline-block transition-transform">▸</span>
+          Extraction notes
+        </summary>
+        <div className="mt-3 flex flex-col gap-3 text-[13px] text-ink-2 leading-[1.65]">
+          {rejectionReason && (
+            <NoteBlock label="Rejection reason">{rejectionReason}</NoteBlock>
+          )}
+          {vatTreatmentReason && (
+            <NoteBlock label="VAT treatment reason">{vatTreatmentReason}</NoteBlock>
+          )}
+          {notes.length > 0 && (
+            <NoteBlock label="Extraction notes">
+              <ul className="m-0 pl-4 list-disc">
+                {notes.map((n, i) => (
+                  <li key={i} className="mb-1">
+                    {n}
+                  </li>
+                ))}
+              </ul>
+            </NoteBlock>
+          )}
+          {warnings.length > 0 && (
+            <NoteBlock label="Warnings">
+              <ul className="m-0 pl-4 list-disc">
+                {warnings.map((w, i) => (
+                  <li key={i} className="mb-1 text-warn">
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </NoteBlock>
+          )}
+        </div>
+      </details>
+    </div>
   );
 }
 
