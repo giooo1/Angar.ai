@@ -29,6 +29,7 @@ from angar_extraction.errors import (
     MalformedPDFError,
 )
 from angar_extraction.extractor import Extractor, ExtractionResult
+from backend.confidence import compute_field_confidence
 from backend.models import Document, Extraction, Organization
 from backend.quota import refund_quota
 from backend.settings import Settings
@@ -207,6 +208,7 @@ def run_extraction(
 
         if result.canonical is not None:
             extraction.canonical_data = result.canonical.model_dump(mode="json")
+            extraction.field_confidence = compute_field_confidence(result.canonical)
             extraction.warnings = []
             extraction.error_code = None
             extraction.error_message = None

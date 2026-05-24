@@ -29,6 +29,10 @@ export interface ExtractionStatusResponse {
   warnings: string[];
   error_code: string | null;
   error_message: string | null;
+  /** Per-field heuristic confidence in [0, 1]. Keys mirror dotted paths
+   *  like `seller.tin`, `grand_total.amount`. Empty `{}` for extractions
+   *  predating the WS2 confidence heuristic. */
+  field_confidence: Record<string, number>;
   processing_time_ms: number | null;
 }
 

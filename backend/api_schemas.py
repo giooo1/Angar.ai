@@ -37,6 +37,7 @@ class ExtractionStatusResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     error_code: str | None = None
     error_message: str | None = None
+    field_confidence: dict[str, float] = Field(default_factory=dict)
     processing_time_ms: int | None = None
 
 

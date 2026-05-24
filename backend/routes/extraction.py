@@ -74,6 +74,7 @@ def _status_response(doc: Document, extraction: Extraction) -> ExtractionStatusR
         warnings=extraction.warnings or [],
         error_code=extraction.error_code,
         error_message=extraction.error_message,
+        field_confidence=extraction.field_confidence or {},
         processing_time_ms=extraction.processing_time_ms,
     )
 
