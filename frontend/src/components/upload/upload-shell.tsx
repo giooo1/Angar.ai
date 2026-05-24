@@ -1,14 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { GridIcon, MailIcon } from "@/components/ui/icons";
 import type { OrganizationDTO } from "@/lib/api-types";
-import { RecentUploads } from "./recent-uploads";
+import { ActivityCard } from "./activity-card";
 import { TipsPanel } from "./tips-panel";
-import { UploadQueue } from "./upload-queue";
 import { UploadZone } from "./upload-zone";
 import { UsagePanel } from "./usage-panel";
 import { useUpload } from "@/hooks/use-upload";
@@ -29,19 +28,6 @@ type Props = {
 export function UploadShell({ organization }: Props) {
   const router = useRouter();
   const { uploads, addFiles } = useUpload();
-
-  const { inFlight, recent } = useMemo(() => {
-    const inFlight = uploads.filter(
-      (u) =>
-        u.phase === "queued" ||
-        u.phase === "uploading" ||
-        u.phase === "extracting",
-    );
-    const recent = uploads.filter(
-      (u) => u.phase === "completed" || u.phase === "failed",
-    );
-    return { inFlight, recent };
-  }, [uploads]);
 
   // Re-pull server data when an upload completes (sidebar tick) or when
   // the backend rejects with QUOTA_EXHAUSTED (so the empty state kicks in).
@@ -102,17 +88,14 @@ export function UploadShell({ organization }: Props) {
               resetsAtIso={organization.quota_reset_at}
             />
           ) : (
-            <>
-              <UploadZone onFiles={addFiles} />
-              <UploadQueue items={inFlight} />
-            </>
+            <UploadZone onFiles={addFiles} />
           )}
         </div>
 
         {/* RIGHT */}
         <div className="flex flex-col gap-[18px]">
           <UsagePanelWired organization={organization} />
-          <RecentUploads items={recent} />
+          <ActivityCard items={uploads} />
           <TipsPanel />
         </div>
       </div>

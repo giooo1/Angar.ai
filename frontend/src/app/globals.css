@@ -86,7 +86,7 @@ body { min-height: 100vh; overflow-x: hidden; }
 }
 
 /* Document thumbnail with the folded-corner trick ---------------------- */
-/* Used in the recent-uploads list and elsewhere a tiny PDF icon shows up.
+/* Used by the Activity card and other doc rows for a tiny PDF icon.
  * Variants set the size and the "PDF" label via CSS variables.
  */
 .doc-thumb {
@@ -150,4 +150,10 @@ body { min-height: 100vh; overflow-x: hidden; }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Activity card shimmer rail on /upload (WS1). */
+@keyframes upShimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }

@@ -2,8 +2,8 @@ import { InfoIcon, ShieldCheckIcon } from "@/components/ui/icons";
 
 /**
  * Right-column tips card. Static content, mostly explanatory. Lives
- * below the recent-uploads list so the eye lands on it after looking
- * at recent work.
+ * below the Activity card so the eye lands on it after looking at
+ * recent work.
  */
 export function TipsPanel() {
   return (
