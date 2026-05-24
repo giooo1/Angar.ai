@@ -1,20 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 const PROTECTED_PATHS = ["/upload", "/dashboard", "/review", "/settings"];
-const AUTH_PAGES = ["/login", "/signup"];
 
 /**
  * Route protection for the (app) shell. (Next 16 calls this a "proxy";
  * older Next called it "middleware".)
  *
- * We only check for COOKIE PRESENCE here — the backend is the
- * authority on whether the JWT is valid. Browser cookies set by
- * localhost:8000 are visible to the proxy running on localhost:3000
- * because both share the localhost host.
+ * The proxy only enforces ONE rule: anonymous visitors to a protected
+ * path get bounced to /login with a `next` query param. We do NOT
+ * bounce logged-in visitors away from /login or /signup at this layer
+ * — a stale (but present) cookie would cause a ping-pong loop with the
+ * (app) layout's server-side session check. /login + /signup pages
+ * themselves do the proper server-side session check and redirect to
+ * /upload only when the backend confirms the cookie is valid.
  *
- * Anonymous visitors get redirected to /login with a `next` query
- * param so the login form can bounce them back. Already-logged-in
- * visitors who land on /login or /signup get bounced to /upload.
+ * Browser cookies set by localhost:8000 are visible here on
+ * localhost:3000 because both share the localhost host.
  */
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -23,18 +24,11 @@ export function proxy(req: NextRequest) {
   const isProtected = PROTECTED_PATHS.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
-  const isAuthPage = AUTH_PAGES.includes(pathname);
 
   if (isProtected && !sessionCookie) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
-  }
-
-  if (isAuthPage && sessionCookie) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/upload";
     return NextResponse.redirect(url);
   }
 
@@ -47,7 +41,5 @@ export const config = {
     "/dashboard/:path*",
     "/review/:path*",
     "/settings/:path*",
-    "/login",
-    "/signup",
   ],
 };

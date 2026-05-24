@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AuthCard } from "@/components/auth/auth-card";
 import { LoginForm } from "@/components/auth/login-form";
+import { getServerSession } from "@/lib/auth";
 
 type SearchParams = Promise<{ next?: string }>;
 
@@ -12,6 +14,14 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const next = params.next ?? "/upload";
+
+  // Server-side session check. Bouncing here (vs. in the proxy) avoids
+  // the ping-pong loop when a stale cookie is present but no longer
+  // valid against the backend.
+  const session = await getServerSession();
+  if (session) {
+    redirect(next);
+  }
 
   return (
     <AuthCard

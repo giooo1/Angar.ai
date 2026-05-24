@@ -1,9 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AuthCard } from "@/components/auth/auth-card";
 import { SignupForm } from "@/components/auth/signup-form";
+import { getServerSession } from "@/lib/auth";
 
-export default function SignupPage() {
+export default async function SignupPage() {
+  // If the cookie validates server-side, send the user into the app
+  // instead of letting them create a second account.
+  const session = await getServerSession();
+  if (session) {
+    redirect("/upload");
+  }
+
   return (
     <AuthCard
       title="Create your"
