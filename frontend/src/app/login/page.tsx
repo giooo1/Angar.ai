@@ -19,12 +19,20 @@ export default async function LoginPage({
       titleAccent="back"
       subtitle="Sign in to keep extracting Georgian invoices into structured data."
       footer={
-        <>
-          New here?{" "}
-          <Link href="/signup" className="text-accent font-medium no-underline hover:underline">
-            Create an account
+        <div className="flex flex-col gap-2 items-center">
+          <div>
+            New here?{" "}
+            <Link href="/signup" className="text-accent font-medium no-underline hover:underline">
+              Create an account
+            </Link>
+          </div>
+          <Link
+            href="/auth/request-reset"
+            className="text-ink-3 no-underline hover:text-ink text-[12.5px]"
+          >
+            Forgot your password?
           </Link>
-        </>
+        </div>
       }
     >
       <LoginForm next={next} />

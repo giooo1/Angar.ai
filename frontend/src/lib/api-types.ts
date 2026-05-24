@@ -48,6 +48,7 @@ export interface UserDTO {
   email: string;
   full_name: string | null;
   locale: string;
+  email_verified_at: string | null;
 }
 
 export interface OrganizationDTO {

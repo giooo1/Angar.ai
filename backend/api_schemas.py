@@ -84,6 +84,25 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class VerifyEmailRequest(BaseModel):
+    """Body of POST /api/v1/auth/verify-email."""
+
+    token: str
+
+
+class RequestPasswordResetRequest(BaseModel):
+    """Body of POST /api/v1/auth/request-password-reset."""
+
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """Body of POST /api/v1/auth/reset-password."""
+
+    token: str
+    new_password: str
+
+
 class UserDTO(BaseModel):
     """Public-facing user shape. Never includes the password hash."""
 
@@ -91,6 +110,7 @@ class UserDTO(BaseModel):
     email: str
     full_name: str | None
     locale: str
+    email_verified_at: datetime | None = None
 
 
 class OrganizationDTO(BaseModel):

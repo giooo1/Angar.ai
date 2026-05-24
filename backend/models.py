@@ -65,8 +65,12 @@ class User(Base):
     locale: Mapped[str] = mapped_column(String(8), default="en")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     memberships: Mapped[list["OrganizationMember"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    email_tokens: Mapped[list["EmailToken"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -95,6 +99,29 @@ class Organization(Base):
     members: Mapped[list["OrganizationMember"]] = relationship(
         back_populates="organization", cascade="all, delete-orphan"
     )
+
+
+class EmailToken(Base):
+    """One-time tokens for email verification and password reset (WS4).
+
+    Storing `token_hash` (sha256) rather than the raw token: a DB leak
+    doesn't immediately let an attacker mint sessions for every pending
+    verify/reset. The raw token only ever appears in the email body.
+    """
+
+    __tablename__ = "email_tokens"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_str)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    purpose: Mapped[str] = mapped_column(String(16))  # "verify" | "reset"
+    token_hash: Mapped[str] = mapped_column(String(64), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="email_tokens")
 
 
 class OrganizationMember(Base):

@@ -92,6 +92,40 @@ export async function me(signal?: AbortSignal): Promise<MeResponse> {
   return (await res.json()) as MeResponse;
 }
 
+export async function verifyEmail(token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/verify-email`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ token }),
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/request-password-reset`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ email }),
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+}
+
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<SessionResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/reset-password`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ token, new_password: newPassword }),
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+  return (await res.json()) as SessionResponse;
+}
+
 // ---------------------------------------------------------------------------
 // Extraction (existing)
 // ---------------------------------------------------------------------------

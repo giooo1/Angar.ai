@@ -62,6 +62,13 @@ class Settings(BaseSettings):
     cookie_secure: bool = Field(default=False)  # set true in production over HTTPS
     cookie_samesite: str = Field(default="lax")  # "lax" | "strict" | "none"
 
+    # --- Email: Resend (Phase 4.5 WS4) ---
+    resend_api_key: str = Field(default="", description="Resend HTTP API key. Optional in dev.")
+    email_from: str = Field(default="Angar.ai <onboarding@resend.dev>")
+    frontend_origin: str = Field(default="http://localhost:3000")
+    email_verify_token_ttl_hours: int = Field(default=24)
+    email_reset_token_ttl_hours: int = Field(default=1)
+
 
 def get_settings() -> Settings:
     """Return a fresh Settings instance. Called via FastAPI dependency injection."""

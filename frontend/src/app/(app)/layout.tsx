@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
+import { VerificationBanner } from "@/components/shell/verification-banner";
 import { getOrgHeaderStats } from "@/lib/api-server";
 import { getServerSession } from "@/lib/auth";
 
@@ -34,6 +35,9 @@ export default async function AppShellLayout({
         documentsCount={headerStats.documentsTotal}
       />
       <div className="flex flex-col min-w-0">
+        {session.user.email_verified_at === null && (
+          <VerificationBanner email={session.user.email} />
+        )}
         <Topbar user={session.user} organization={session.organization} />
         {children}
       </div>
