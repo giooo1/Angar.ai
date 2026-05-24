@@ -1,19 +1,22 @@
 #!/usr/bin/env python
-"""Pre-commit gate that runs the eval harness when prompt-relevant files change.
+"""Pre-commit gate: eval harness + real-PDF e2e smoke, file-pattern triggered.
 
-Triggered by `.pre-commit-config.yaml`. On every commit:
+Configured by `.pre-commit-config.yaml`. On every commit:
 
-  1. Inspect `git diff --cached` for staged files.
-  2. If any prompt file (`angar_extraction/prompts/*.md`) changed, run the
-     harness against THAT prompt version.
-  3. Else if the extractor module or the `angar_*` settings lines changed,
-     run the harness against the production prompt version (detected from
-     `backend.settings.Settings.angar_prompt_version`).
-  4. Otherwise, exit 0 immediately — no eval, no spend.
+  1. If any prompt file (`angar_extraction/prompts/*.md`) changed, run
+     the eval harness against THAT prompt version.
+  2. Else if `angar_extraction/extractor.py` or the `angar_*` settings
+     lines in `backend/settings.py` changed, run the eval against the
+     production prompt version.
+  3. If any pipeline-wiring file changed
+     (`backend/extraction_service.py`, `backend/main.py`, the rest of
+     `backend/settings.py`), additionally run the real-PDF e2e smoke
+     (`pytest -m e2e`). This is the layer that catches the
+     missing-env-var / SDK-wiring class of bugs a pure prompt eval can't
+     see.
+  4. Otherwise exit 0 immediately — no eval, no spend.
 
-The harness is invoked with `--baseline-threshold 0.9`, so a prompt or
-extractor change that drops overall accuracy below 90% aborts the commit.
-Explicit override is `git commit --no-verify`.
+Explicit override: `git commit --no-verify`.
 """
 
 from __future__ import annotations
@@ -26,10 +29,17 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BASELINE_THRESHOLD = "0.9"
 
-# Paths that, if changed, fire the gate.
+# Paths that, if changed, fire the eval gate.
 PROMPT_PREFIX = "angar_extraction/prompts/"
 EXTRACTOR_PATH = "angar_extraction/extractor.py"
 SETTINGS_PATH = "backend/settings.py"
+
+# Paths that, if changed, fire the e2e smoke. Extractor changes already
+# fire the eval gate above, which is the right tool for that file.
+WIRING_PATHS = (
+    "backend/extraction_service.py",
+    "backend/main.py",
+)
 
 
 def _staged_files() -> list[str]:
@@ -87,22 +97,7 @@ def _production_prompt_version() -> str:
         return "v3"
 
 
-def main() -> int:
-    staged = _staged_files()
-    if not staged:
-        return 0
-
-    prompt_version = _changed_prompt_version(staged)
-    extractor_changed = EXTRACTOR_PATH in staged
-    settings_changed = SETTINGS_PATH in staged and _settings_diff_touches_extraction()
-
-    if prompt_version is None and not extractor_changed and not settings_changed:
-        # Nothing relevant; skip the eval entirely.
-        return 0
-
-    if prompt_version is None:
-        prompt_version = _production_prompt_version()
-
+def _run_eval(prompt_version: str) -> int:
     print(
         f"[eval-gate] running harness against prompt={prompt_version} "
         f"with --baseline-threshold {BASELINE_THRESHOLD}",
@@ -120,16 +115,63 @@ def main() -> int:
         ],
         cwd=str(REPO_ROOT),
     )
-    if proc.returncode == 0:
-        print("[eval-gate] PASS", file=sys.stderr)
-        return 0
+    return proc.returncode
 
+
+def _run_e2e_smoke() -> int:
     print(
-        f"[eval-gate] FAILED (exit {proc.returncode}). Commit aborted.\n"
-        f"[eval-gate] To bypass intentionally: git commit --no-verify",
+        "[eval-gate] running real-PDF e2e smoke (pytest -m e2e)",
         file=sys.stderr,
     )
+    proc = subprocess.run(
+        [sys.executable, "-m", "pytest", "-m", "e2e", "-q"],
+        cwd=str(REPO_ROOT),
+    )
     return proc.returncode
+
+
+def main() -> int:
+    staged = _staged_files()
+    if not staged:
+        return 0
+
+    prompt_version = _changed_prompt_version(staged)
+    extractor_changed = EXTRACTOR_PATH in staged
+    settings_touches_extraction = (
+        SETTINGS_PATH in staged and _settings_diff_touches_extraction()
+    )
+    wiring_changed = any(p in staged for p in WIRING_PATHS) or SETTINGS_PATH in staged
+
+    needs_eval = prompt_version is not None or extractor_changed or settings_touches_extraction
+    needs_e2e = wiring_changed
+
+    if not needs_eval and not needs_e2e:
+        return 0
+
+    if needs_eval:
+        if prompt_version is None:
+            prompt_version = _production_prompt_version()
+        rc = _run_eval(prompt_version)
+        if rc != 0:
+            print(
+                f"[eval-gate] EVAL FAILED (exit {rc}). Commit aborted.\n"
+                f"[eval-gate] To bypass intentionally: git commit --no-verify",
+                file=sys.stderr,
+            )
+            return rc
+
+    if needs_e2e:
+        rc = _run_e2e_smoke()
+        if rc != 0:
+            print(
+                f"[eval-gate] E2E SMOKE FAILED (exit {rc}). Commit aborted.\n"
+                f"[eval-gate] To bypass intentionally: git commit --no-verify",
+                file=sys.stderr,
+            )
+            return rc
+
+    print("[eval-gate] PASS", file=sys.stderr)
+    return 0
 
 
 if __name__ == "__main__":
