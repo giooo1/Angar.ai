@@ -63,7 +63,9 @@ def healthz() -> dict[str, str]:
 
 # Routes are registered as they land. Step 2 adds the extraction router; step 5 adds auth.
 from backend.routes.auth import router as auth_router  # noqa: E402
+from backend.routes.billing import router as billing_router  # noqa: E402
 from backend.routes.extraction import router as extraction_router  # noqa: E402
 
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(extraction_router, prefix="/api/v1", tags=["extraction"])
+app.include_router(billing_router, prefix="/api/v1", tags=["billing"])

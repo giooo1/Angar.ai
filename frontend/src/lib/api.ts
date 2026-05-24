@@ -127,6 +127,32 @@ export async function resetPassword(
 }
 
 // ---------------------------------------------------------------------------
+// Billing (Phase 4.5 WS5)
+// ---------------------------------------------------------------------------
+
+export type Plan = "pro" | "business";
+
+export async function createCheckoutSession(plan: Plan): Promise<{ url: string }> {
+  const res = await fetch(`${API_BASE}/api/v1/billing/checkout`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ plan }),
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+  return (await res.json()) as { url: string };
+}
+
+export async function createBillingPortalSession(): Promise<{ url: string }> {
+  const res = await fetch(`${API_BASE}/api/v1/billing/portal`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+  return (await res.json()) as { url: string };
+}
+
+// ---------------------------------------------------------------------------
 // Extraction (existing)
 // ---------------------------------------------------------------------------
 

@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     email_verify_token_ttl_hours: int = Field(default=24)
     email_reset_token_ttl_hours: int = Field(default=1)
 
+    # --- Stripe (Phase 4.5 WS5) ---
+    stripe_secret_key: str = Field(default="", description="sk_test_... / sk_live_... ")
+    stripe_webhook_secret: str = Field(default="", description="whsec_... from Stripe CLI or dashboard.")
+    stripe_price_id_pro: str = Field(default="", description="Stripe Price ID for the Pro plan.")
+    stripe_price_id_business: str = Field(default="", description="Stripe Price ID for the Business plan.")
+
 
 def get_settings() -> Settings:
     """Return a fresh Settings instance. Called via FastAPI dependency injection."""
@@ -81,4 +87,15 @@ def get_settings() -> Settings:
 
 PLAN_QUOTAS: dict[str, int] = {
     "free": 50,
+    "pro": 100,
+    "business": 500,
+}
+
+# Display copy for the billing page tiles. Prices come from Stripe at
+# checkout — these are advertised numbers only; the source of truth on
+# what a customer is charged is whatever the linked Stripe Price says.
+PLAN_DISPLAY: dict[str, dict[str, str]] = {
+    "free": {"label": "Free", "price": "₾0", "blurb": "Evaluate Angar.ai on real invoices."},
+    "pro": {"label": "Pro", "price": "₾49 / month", "blurb": "One-person practice."},
+    "business": {"label": "Business", "price": "₾249 / month", "blurb": "Small accounting firm."},
 }

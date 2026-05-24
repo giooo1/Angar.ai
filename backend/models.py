@@ -96,9 +96,31 @@ class Organization(Base):
         DateTime, default=_retention_default
     )
 
+    # Stripe linkage (Phase 4.5 WS5). NULL while the org hasn't paid.
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
     members: Mapped[list["OrganizationMember"]] = relationship(
         back_populates="organization", cascade="all, delete-orphan"
     )
+
+
+class WebhookEvent(Base):
+    """Idempotency record for Stripe webhooks (Phase 4.5 WS5).
+
+    Stripe can deliver the same event multiple times under retry policy.
+    Before processing an event we INSERT this row keyed by the event id;
+    if the INSERT collides on the PK, the second delivery acks 200 and
+    does nothing. `processed_at` is informational only.
+    """
+
+    __tablename__ = "webhook_events"
+
+    # Stripe event ids are short strings like `evt_1OabcDeFghIj`.
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    type: Mapped[str] = mapped_column(String(64))
+    received_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class EmailToken(Base):
