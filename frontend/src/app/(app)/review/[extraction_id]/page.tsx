@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 
 import { ActionBar } from "@/components/review/action-bar";
+import { ExtractionErrorCard } from "@/components/review/extraction-error-card";
 import { ExtractionPane } from "@/components/review/extraction-pane";
 import { FileBar } from "@/components/review/file-bar";
 import { PdfPane } from "@/components/review/pdf-pane";
@@ -74,15 +75,10 @@ export default function ReviewDetailPage() {
         {canonical ? (
           <ExtractionPane canonical={canonical} />
         ) : (
-          <div className="bg-paper border border-line rounded-xl p-6 text-ink-3 text-[13px]">
-            <p className="font-serif text-[17px] font-medium text-ink m-0 mb-2">
-              No structured data yet
-            </p>
-            <p className="m-0">
-              {data.error_message ??
-                "This extraction returned no canonical_data — likely a parse failure."}
-            </p>
-          </div>
+          <ExtractionErrorCard
+            errorCode={data.error_code}
+            errorMessage={data.error_message}
+          />
         )}
       </div>
 

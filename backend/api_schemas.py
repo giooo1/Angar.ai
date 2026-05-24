@@ -35,6 +35,7 @@ class ExtractionStatusResponse(BaseModel):
     model_version: str
     canonical_data: dict[str, Any] | None = None
     warnings: list[str] = Field(default_factory=list)
+    error_code: str | None = None
     error_message: str | None = None
     processing_time_ms: int | None = None
 

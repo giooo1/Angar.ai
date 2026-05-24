@@ -27,6 +27,7 @@ export interface ExtractionStatusResponse {
   model_version: string;
   canonical_data: CanonicalInvoice | null;
   warnings: string[];
+  error_code: string | null;
   error_message: string | null;
   processing_time_ms: number | null;
 }

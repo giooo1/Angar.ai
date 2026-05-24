@@ -20,8 +20,17 @@ from anthropic import Anthropic
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from angar_extraction.errors import (
+    AnthropicAPIError,
+    AnthropicAuthError,
+    AnthropicOverloadedError,
+    AnthropicRateLimitError,
+    ExtractionError,
+    MalformedPDFError,
+)
 from angar_extraction.extractor import Extractor, ExtractionResult
-from backend.models import Document, Extraction
+from backend.models import Document, Extraction, Organization
+from backend.quota import refund_quota
 from backend.settings import Settings
 from backend.storage import Storage, content_key, sha256_hex
 
@@ -151,16 +160,29 @@ def run_extraction(
     db: Session,
     storage: Storage,
     extractor: Extractor,
+    current_org: Organization | None = None,
 ) -> Extraction:
     """Execute extraction for the given Extraction row. Persist the result.
 
-    Catches every exception so a single failed doc doesn't take down the
-    request. On failure, sets status='failed' and `error_message`.
+    Typed-exception dispatch (per `angar_extraction.errors`) populates the
+    `error_code` column on failure. Infrastructure-side failures
+    (`ANTHROPIC_AUTH`, `ANTHROPIC_RATE_LIMIT`, `ANTHROPIC_OVERLOADED`,
+    `ANTHROPIC_API`, `UNKNOWN`) refund the quota slot — the user shouldn't
+    pay for our outage. PDF-side failures (`MALFORMED_PDF`, `PARSE_ERROR`)
+    consume the slot because the model call was made.
+
+    `current_org` is optional only so reextract / test paths that already
+    hold the row can pass it without an extra lookup; if omitted we
+    resolve it from the document's organization_id.
     """
     extraction = db.get(Extraction, extraction_id)
     if extraction is None:
         raise ExtractionServiceError(f"extraction not found: {extraction_id}")
     document = extraction.document
+
+    org = current_org
+    if org is None:
+        org = db.get(Organization, document.organization_id)
 
     extraction.status = "running"
     extraction.started_at = _utcnow()
@@ -186,18 +208,35 @@ def run_extraction(
         if result.canonical is not None:
             extraction.canonical_data = result.canonical.model_dump(mode="json")
             extraction.warnings = []
+            extraction.error_code = None
             extraction.error_message = None
             extraction.status = "completed"
         else:
+            # Model returned but we couldn't parse — quota consumed, no refund.
             extraction.canonical_data = None
             extraction.warnings = []
-            extraction.error_message = result.parse_error or "extraction returned no canonical data"
+            extraction.error_code = "PARSE_ERROR"
+            extraction.error_message = (
+                result.parse_error or "extraction returned no canonical data"
+            )
             extraction.status = "failed"
 
+    except ExtractionError as exc:
+        extraction.status = "failed"
+        extraction.completed_at = _utcnow()
+        extraction.error_code = exc.code
+        extraction.error_message = str(exc) or exc.code
+        if exc.is_transient or isinstance(exc, AnthropicAuthError):
+            # Infra problem — refund the quota slot we optimistically bumped.
+            if org is not None:
+                refund_quota(org)
     except Exception as exc:  # noqa: BLE001
         extraction.status = "failed"
         extraction.completed_at = _utcnow()
+        extraction.error_code = "UNKNOWN"
         extraction.error_message = f"{type(exc).__name__}: {exc}"
+        if org is not None:
+            refund_quota(org)
 
     db.commit()
     db.refresh(extraction)

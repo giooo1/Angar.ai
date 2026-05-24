@@ -173,6 +173,7 @@ class Extraction(Base):
     canonical_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     field_confidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     warnings: Mapped[list[str]] = mapped_column(JSON, default=list)
+    error_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
     error_message: Mapped[str | None] = mapped_column(String(4096), nullable=True)
 
     processing_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)

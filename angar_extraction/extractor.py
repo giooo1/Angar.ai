@@ -24,8 +24,24 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from anthropic import Anthropic
+from anthropic import (
+    Anthropic,
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    AuthenticationError,
+    BadRequestError,
+    InternalServerError,
+    RateLimitError,
+)
 
+from angar_extraction.errors import (
+    AnthropicAPIError,
+    AnthropicAuthError,
+    AnthropicOverloadedError,
+    AnthropicRateLimitError,
+    MalformedPDFError,
+)
 from angar_schema.canonical import CanonicalInvoice
 from angar_extraction.prompt import load_prompt
 
@@ -91,13 +107,7 @@ class Extractor:
         messages = self._build_messages(pdf_b64)
 
         started = time.perf_counter()
-        message = self.client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            temperature=0,
-            system=system_param,
-            messages=messages,
-        )
+        message = self._call_with_retry(system_param, messages)
         elapsed_ms = int((time.perf_counter() - started) * 1000)
 
         raw = _join_text_blocks(message.content)
@@ -116,6 +126,66 @@ class Extractor:
         )
 
     # ---- internals ----
+
+    _MAX_RETRIES = 3
+    _RETRY_BASE_SECONDS = 2.0
+
+    def _call_with_retry(
+        self,
+        system_param: list[dict[str, Any]],
+        messages: list[dict[str, Any]],
+    ) -> Any:
+        """Wrap `client.messages.create` with typed-exception translation and
+        exponential backoff on the transient SDK errors (rate-limit, overloaded,
+        timeout, connection). Non-transient SDK errors re-raise immediately as
+        our typed exceptions.
+        """
+        last_transient: Exception | None = None
+        for attempt in range(self._MAX_RETRIES):
+            try:
+                return self.client.messages.create(
+                    model=self.model,
+                    max_tokens=self.max_tokens,
+                    temperature=0,
+                    system=system_param,
+                    messages=messages,
+                )
+            except AuthenticationError as exc:
+                raise AnthropicAuthError(str(exc)) from exc
+            except BadRequestError as exc:
+                raise MalformedPDFError(str(exc)) from exc
+            except RateLimitError as exc:
+                last_transient = exc
+                wrapped: Exception = AnthropicRateLimitError(str(exc))
+            except InternalServerError as exc:
+                last_transient = exc
+                # 529 = overloaded; other 5xx = generic upstream failure.
+                status = getattr(exc, "status_code", None)
+                wrapped = (
+                    AnthropicOverloadedError(str(exc))
+                    if status == 529
+                    else AnthropicAPIError(str(exc))
+                )
+            except (APIConnectionError, APITimeoutError) as exc:
+                last_transient = exc
+                wrapped = AnthropicAPIError(str(exc))
+            except APIStatusError as exc:
+                # Status-coded but not one of the specific subclasses above.
+                status = getattr(exc, "status_code", None)
+                if status == 529:
+                    last_transient = exc
+                    wrapped = AnthropicOverloadedError(str(exc))
+                elif status and 500 <= status < 600:
+                    last_transient = exc
+                    wrapped = AnthropicAPIError(str(exc))
+                else:
+                    raise AnthropicAPIError(str(exc)) from exc
+
+            if attempt + 1 == self._MAX_RETRIES:
+                raise wrapped from last_transient
+            time.sleep(self._RETRY_BASE_SECONDS * (2**attempt))
+        # Unreachable: loop returns or raises.
+        raise AnthropicAPIError("retry loop exhausted with no result")
 
     def _build_system_param(self) -> list[dict[str, Any]]:
         block: dict[str, Any] = {"type": "text", "text": self.system_prompt}

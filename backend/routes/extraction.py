@@ -70,6 +70,7 @@ def _status_response(doc: Document, extraction: Extraction) -> ExtractionStatusR
         model_version=extraction.model_version,
         canonical_data=extraction.canonical_data,
         warnings=extraction.warnings or [],
+        error_code=extraction.error_code,
         error_message=extraction.error_message,
         processing_time_ms=extraction.processing_time_ms,
     )
@@ -153,6 +154,7 @@ async def upload_document(
             db=db,
             storage=storage,
             extractor=extractor,
+            current_org=current_org,
         )
     else:
         # Dedup: no new model call, so undo the quota bump.
@@ -249,6 +251,7 @@ def reextract_document(
         db=db,
         storage=storage,
         extractor=extractor,
+        current_org=current_org,
     )
     return UploadResponse(
         document_id=document_id,
