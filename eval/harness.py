@@ -9,9 +9,10 @@ Usage:
     python -m eval.harness --no-cache              # disable prompt caching
 
 Exits:
-    0  — run finished; if a gate was set, accuracy held within the threshold
+    0  — run finished; any gate(s) set were satisfied
     1  — runtime failure (missing API key, missing prompt, etc.)
-    2  — regression gate exceeded (accuracy dropped more than --gate)
+    2  — regression gate exceeded (accuracy dropped more than --gate vs --compare-to)
+    3  — baseline-threshold gate exceeded (overall accuracy below --baseline-threshold)
 """
 
 from __future__ import annotations
@@ -132,7 +133,21 @@ def main(argv: list[str] | None = None) -> int:
         cmp_ = compare_runs(baseline, run)
         console.print()
         passed = render_comparison(cmp_, gate=args.gate, console=console)
-        return 0 if passed else 2
+        if not passed:
+            return 2
+
+    if args.baseline_threshold is not None:
+        if run.overall_accuracy < args.baseline_threshold:
+            console.print(
+                f"\n[red]Baseline gate failed:[/red] overall accuracy "
+                f"{run.overall_accuracy * 100:.2f}% < threshold "
+                f"{args.baseline_threshold * 100:.2f}%."
+            )
+            return 3
+        console.print(
+            f"\n[green]Baseline gate passed:[/green] "
+            f"{run.overall_accuracy * 100:.2f}% ≥ {args.baseline_threshold * 100:.2f}%."
+        )
 
     return 0
 
@@ -173,6 +188,14 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default=0.02,
         help="Maximum tolerated accuracy drop vs --compare-to baseline. "
              "Default: 0.02 (2%%) per Phase 3 design doc section 5.3.",
+    )
+    parser.add_argument(
+        "--baseline-threshold",
+        type=float,
+        default=None,
+        help="Absolute floor on overall accuracy in [0, 1]. Exits 3 if the run "
+             "falls below this number. Used by the pre-commit gate to refuse "
+             "prompt regressions; safe to combine with --compare-to.",
     )
     parser.add_argument(
         "--top-mismatches",

@@ -1,0 +1,23 @@
+# Pre-commit hooks for the Angar.ai repo.
+#
+# Install once:   pip install -e ".[dev]" && pre-commit install
+# Bypass once:    git commit --no-verify
+#
+# The single hook today is the eval gate: when files that affect
+# extraction accuracy change (prompts, extractor module, or the
+# angar_* lines in backend/settings.py), it runs the eval harness
+# against the relevant prompt and refuses the commit if overall
+# accuracy on the 18-doc baseline drops below 90%. See
+# scripts/eval_gate.py for the precise trigger logic.
+
+repos:
+  - repo: local
+    hooks:
+      - id: eval-gate
+        name: eval harness gate
+        entry: python scripts/eval_gate.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+        verbose: true

@@ -40,6 +40,34 @@ python -m eval.harness --model claude-haiku-4-5-20251001
 
 # regression-gate against a prior baseline run
 python -m eval.harness --compare-to eval/runs/<prev>.json --gate 0.02
+
+# absolute floor — exits 3 if overall accuracy drops below the threshold
+python -m eval.harness --baseline-threshold 0.9
+```
+
+## Pre-commit gate
+
+A pre-commit hook (`scripts/eval_gate.py`, configured in
+`.pre-commit-config.yaml`) runs the harness automatically when files
+that affect extraction accuracy change:
+
+- any `angar_extraction/prompts/v*.md`
+- `angar_extraction/extractor.py`
+- the `angar_*` lines in `backend/settings.py`
+
+It runs with `--baseline-threshold 0.9` and aborts the commit if the
+18-doc baseline drops below 90%. To bypass intentionally (e.g. you're
+mid-iteration and the next commit will fix it):
+
+```bash
+git commit --no-verify -m "..."
+```
+
+Install the hook once after cloning:
+
+```bash
+pip install -e ".[dev]"
+pre-commit install
 ```
 
 ## What it does
