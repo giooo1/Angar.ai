@@ -8,9 +8,11 @@ Celery without changing this contract.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, Request, Response, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
+from backend.rate_limit import limiter
 
 from angar_extraction.extractor import Extractor
 from backend.api_schemas import (
@@ -87,9 +89,12 @@ def _status_response(doc: Document, extraction: Extraction) -> ExtractionStatusR
     responses={
         413: {"model": ErrorResponse},
         415: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
     },
 )
+@limiter.limit("30/minute")
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     storage: Storage = Depends(get_storage),

@@ -11,9 +11,11 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from email_validator import EmailNotValidError, validate_email
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+from backend.rate_limit import limiter
 
 from backend.api_schemas import (
     ApiError,
@@ -138,9 +140,12 @@ def _clear_session_cookie(response: Response, settings: Settings) -> None:
     responses={
         400: {"model": ErrorResponse},
         409: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
     },
 )
+@limiter.limit("3/hour")
 def register(
+    request: Request,
     body: RegisterRequest,
     response: Response,
     db: Session = Depends(get_db),
@@ -212,9 +217,14 @@ def register(
 @router.post(
     "/auth/login",
     response_model=SessionResponse,
-    responses={401: {"model": ErrorResponse}},
+    responses={
+        401: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
+    },
 )
+@limiter.limit("5/minute")
 def login(
+    request: Request,
     body: LoginRequest,
     response: Response,
     db: Session = Depends(get_db),

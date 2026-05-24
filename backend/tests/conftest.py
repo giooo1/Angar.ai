@@ -23,7 +23,22 @@ from sqlalchemy.orm import Session, sessionmaker
 from backend.auth import hash_password
 from backend.db import Base
 from backend.models import Organization, OrganizationMember, User
+from backend.rate_limit import limiter
 from backend.storage import FilesystemStorage
+
+
+@pytest.fixture(autouse=True)
+def _disable_rate_limiter() -> Iterator[None]:
+    """Tests share a process; the slowapi limiter would carry state between
+    them and start 429-ing legitimate test calls. Disable for every test;
+    test_rate_limit re-enables explicitly inside its own scope.
+    """
+    limiter.enabled = False
+    try:
+        yield
+    finally:
+        limiter.enabled = False
+        limiter.reset()
 
 
 @pytest.fixture

@@ -9,8 +9,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
 
 from backend.db import init_db
+from backend.rate_limit import limiter, rate_limit_handler
 from backend.settings import get_settings
 
 
@@ -37,6 +39,10 @@ app = FastAPI(
     version="0.1.0",
     lifespan=_lifespan,
 )
+
+# slowapi rate limiter — see backend/rate_limit.py for the handler.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
 # CORS for local Next.js dev (step 3 will run on :3000). Production CORS
 # narrowing is a step 5 concern.
