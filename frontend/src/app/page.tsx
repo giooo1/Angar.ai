@@ -1,11 +1,27 @@
 import { redirect } from "next/navigation";
 
+import { LandingHero } from "@/components/landing/landing-hero";
+import { LandingNav } from "@/components/landing/landing-nav";
+import { getServerSession } from "@/lib/auth";
+
 /**
- * Root `/` — sends the user to `/upload`. Once step 5 (auth) lands,
- * unauthenticated visitors get sent to a sign-in page instead and
- * authenticated visitors continue to `/upload`. Once Hero v2.html
- * lands as a public marketing landing, this becomes the marketing page.
+ * Root `/` — closed-beta landing page.
+ *
+ * Logged-in visitors are bounced to `/upload` server-side so the
+ * page never flickers. Anonymous visitors see the editorial hero
+ * with the live-extraction animation (CSS-only) and the closed-beta
+ * messaging in Mkhedruli per `Hero v2.html`.
  */
-export default function Home() {
-  redirect("/upload");
+export default async function Home() {
+  const session = await getServerSession();
+  if (session) {
+    redirect("/upload");
+  }
+
+  return (
+    <div className="min-h-screen bg-bg">
+      <LandingNav />
+      <LandingHero />
+    </div>
+  );
 }
