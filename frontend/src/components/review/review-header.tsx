@@ -76,6 +76,9 @@ export function ReviewHeader({
       if (dirty) await onSave();
       const r = await approveExtraction(extractionId);
       setApproved(r.approved_at);
+      // Re-run the server layout so the nav worklist badge updates live
+      // (it's computed server-side and otherwise only refreshes on navigation).
+      router.refresh();
     } catch {
       setErr("Couldn't approve — try again.");
     } finally {
