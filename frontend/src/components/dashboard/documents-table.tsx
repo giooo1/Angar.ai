@@ -31,13 +31,15 @@ export function DocumentsTable({ items }: Props) {
 
   return (
     <div className="bg-paper border border-line rounded-xl overflow-hidden">
-      <div className="grid grid-cols-[40px_1fr_120px_220px_140px_auto] gap-3 items-center px-4 py-3 border-b border-line-2 bg-paper-2 font-mono text-[10.5px] text-ink-3 tracking-[0.06em] uppercase">
+      <div className="grid grid-cols-[40px_1fr_120px_120px_200px_130px_110px_auto] gap-3 items-center px-4 py-3 border-b border-line-2 bg-paper-2 font-mono text-[10.5px] text-ink-3 tracking-[0.06em] uppercase">
         <span />
         <span>Document</span>
+        <span>Type</span>
         <span>Date</span>
         <span>Seller</span>
         <span>Grand total</span>
         <span>Status</span>
+        <span className="text-right">Action</span>
       </div>
       {items.map((item) => (
         <DocumentRow key={item.extraction_id} item={item} />

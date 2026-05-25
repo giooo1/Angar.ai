@@ -32,7 +32,7 @@ export default async function AppShellLayout({
     <div className="grid grid-cols-[240px_1fr] min-h-screen">
       <Sidebar
         organization={session.organization}
-        documentsCount={headerStats.documentsTotal}
+        pendingCount={headerStats.pendingTotal}
       />
       <div className="flex flex-col min-w-0">
         {session.user.email_verified_at === null && (

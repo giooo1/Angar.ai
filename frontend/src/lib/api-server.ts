@@ -24,12 +24,17 @@ async function sessionCookieHeader(): Promise<string | null> {
 export async function listExtractionsServer(params: {
   page: number;
   pageSize: number;
+  /** Worklist mode: only docs needing attention (not yet approved). */
+  pending?: boolean;
+  sort?: "newest" | "oldest";
 }): Promise<ListExtractionsResponse> {
   const cookieHeader = await sessionCookieHeader();
   const qs = new URLSearchParams({
     page: String(params.page),
     page_size: String(params.pageSize),
   });
+  if (params.pending) qs.set("pending", "true");
+  if (params.sort) qs.set("sort", params.sort);
   const res = await fetch(`${apiBase}/api/v1/extractions?${qs}`, {
     cache: "no-store",
     headers: cookieHeader ? { Cookie: cookieHeader } : {},
@@ -41,16 +46,15 @@ export async function listExtractionsServer(params: {
 }
 
 /**
- * Cheap "how many docs does this org have" probe. Asks for page=1
- * page_size=1 and discards the item list — only `total` is interesting.
- * Used by the (app) layout to surface a real count in the sidebar.
- * Returns 0 on any failure so the layout can render without throwing.
+ * Cheap "how many docs need my attention" probe for the nav badge. Asks for
+ * the pending worklist with page_size=1 and keeps only `total`. Returns 0 on
+ * any failure so the layout renders without throwing.
  */
-export async function getOrgHeaderStats(): Promise<{ documentsTotal: number }> {
+export async function getOrgHeaderStats(): Promise<{ pendingTotal: number }> {
   try {
-    const { total } = await listExtractionsServer({ page: 1, pageSize: 1 });
-    return { documentsTotal: total };
+    const { total } = await listExtractionsServer({ page: 1, pageSize: 1, pending: true });
+    return { pendingTotal: total };
   } catch {
-    return { documentsTotal: 0 };
+    return { pendingTotal: 0 };
   }
 }

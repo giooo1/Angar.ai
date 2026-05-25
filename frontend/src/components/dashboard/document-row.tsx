@@ -6,14 +6,15 @@ import type { ExtractionStatusResponse } from "@/lib/api-types";
 type Props = { item: ExtractionStatusResponse };
 
 /**
- * One row in the Documents library. Mirrors QueueRow but adds a
- * `document_date` column between filename and seller. Click anywhere
- * on the row → /review/<extraction_id>.
+ * One row in the Documents archive: thumb · filename/number · type · date ·
+ * seller · grand total · status · Open. Click anywhere → /review/<id> (the
+ * review screen, where the data is also editable).
  */
 export function DocumentRow({ item }: Props) {
   const canonical = item.canonical_data;
   const sellerName = canonical?.seller?.name ?? "—";
   const docNumber = canonical?.document_number ?? item.extraction_id.slice(0, 8);
+  const docType = canonical?.document_type ?? "unknown";
   const docDate = canonical?.document_date ?? "—";
   const grandTotal = canonical?.grand_total;
   const isMkhedruli =
@@ -23,7 +24,7 @@ export function DocumentRow({ item }: Props) {
   return (
     <Link
       href={`/review/${item.extraction_id}`}
-      className="grid grid-cols-[40px_1fr_120px_220px_140px_auto] gap-3 items-center px-4 py-3 border-b border-line-2 last:border-b-0 hover:bg-paper-2 transition-colors no-underline text-ink"
+      className="grid grid-cols-[40px_1fr_120px_120px_200px_130px_110px_auto] gap-3 items-center px-4 py-3 border-b border-line-2 last:border-b-0 hover:bg-paper-2 transition-colors no-underline text-ink"
     >
       <span className="doc-thumb" style={{ width: 28, height: 36 }} />
       <div className="min-w-0">
@@ -33,6 +34,9 @@ export function DocumentRow({ item }: Props) {
         <div className="font-mono text-[10.5px] text-ink-3 tracking-[0.04em] mt-0.5">
           {docNumber}
         </div>
+      </div>
+      <div className="min-w-0">
+        <Chip variant="default">{docType}</Chip>
       </div>
       <div className="font-mono text-[12px] text-ink-2 tracking-[0.02em]">
         {docDate}
@@ -50,6 +54,7 @@ export function DocumentRow({ item }: Props) {
         {grandTotal ? `${grandTotal.amount} ${grandTotal.currency}` : "—"}
       </div>
       <StatusChip status={item.status} />
+      <span className="justify-self-end text-[13px] font-medium text-accent">Open</span>
     </Link>
   );
 }

@@ -292,6 +292,24 @@ class TestListExtractions:
         returned_ids = [item["extraction_id"] for item in body["items"]]
         assert returned_ids == list(reversed(ids))
 
+    def test_sort_oldest_first(self, client: TestClient) -> None:
+        ids = self._seed_uploads(client, count=3)
+        r = client.get("/api/v1/extractions?sort=oldest")
+        returned_ids = [item["extraction_id"] for item in r.json()["items"]]
+        assert returned_ids == ids  # FIFO: creation order
+
+    def test_pending_excludes_approved(self, client: TestClient) -> None:
+        ids = self._seed_uploads(client, count=2)
+        # Both start unapproved → both are pending.
+        assert client.get("/api/v1/extractions?pending=true").json()["total"] == 2
+        # Approving one removes it from the worklist (and the count).
+        client.post(f"/api/v1/extractions/{ids[0]}/approve")
+        body = client.get("/api/v1/extractions?pending=true").json()
+        assert body["total"] == 1
+        assert ids[0] not in {i["extraction_id"] for i in body["items"]}
+        # The archive (default) still shows both.
+        assert client.get("/api/v1/extractions").json()["total"] == 2
+
     def test_pagination(self, client: TestClient) -> None:
         self._seed_uploads(client, count=5)
         r = client.get("/api/v1/extractions?page=1&page_size=2")

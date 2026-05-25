@@ -11,9 +11,9 @@ import { listExtractionsServer } from "@/lib/api-server";
 export const dynamic = "force-dynamic";
 
 /**
- * Review queue list. Server-component shell with a fetched-once table.
- * Step 4 lists ALL completed/failed extractions newest first; refined
- * filtering (low-confidence, needs-review) arrives with the Dashboard.
+ * Review queue — a worklist. Shows only documents needing attention (not yet
+ * approved), oldest first (FIFO). Approving a document removes it from here.
+ * Browse everything in the Documents archive.
  */
 export default async function ReviewQueuePage() {
   let items: Awaited<ReturnType<typeof listExtractionsServer>>["items"] = [];
@@ -21,7 +21,12 @@ export default async function ReviewQueuePage() {
   let loadError: string | null = null;
 
   try {
-    const data = await listExtractionsServer({ page: 1, pageSize: 25 });
+    const data = await listExtractionsServer({
+      page: 1,
+      pageSize: 25,
+      pending: true,
+      sort: "oldest",
+    });
     items = data.items;
     total = data.total;
   } catch (err) {
@@ -36,8 +41,8 @@ export default async function ReviewQueuePage() {
             Review <em className="italic text-accent not-italic font-normal">queue</em>
           </h1>
           <p className="text-[14.5px] text-ink-3 max-w-[560px] m-0">
-            Every extraction you&apos;ve run, newest first. Click a row to open
-            the side-by-side review.
+            Documents waiting for your review, oldest first. Approving one clears
+            it from the queue.
           </p>
         </div>
         <Link href="/upload">
@@ -61,10 +66,14 @@ export default async function ReviewQueuePage() {
       ) : items.length === 0 ? (
         <div className="bg-paper border border-line rounded-xl p-12 text-center">
           <p className="font-serif text-[20px] font-medium text-ink m-0 mb-2">
-            No extractions yet
+            All caught up. Nothing to review.
           </p>
           <p className="text-[13px] text-ink-3 m-0 mb-5">
-            Head to Upload to extract your first document.
+            Approved documents live in your{" "}
+            <Link href="/dashboard" className="text-accent no-underline hover:underline">
+              Documents
+            </Link>{" "}
+            archive.
           </p>
           <Link href="/upload">
             <Button variant="accent">
@@ -75,13 +84,13 @@ export default async function ReviewQueuePage() {
         </div>
       ) : (
         <div className="bg-paper border border-line rounded-xl overflow-hidden">
-          <div className="grid grid-cols-[32px_1fr_220px_140px_140px_auto] gap-3 items-center px-4 py-3 border-b border-line-2 bg-paper-2 font-mono text-[10.5px] text-ink-3 tracking-[0.06em] uppercase">
+          <div className="grid grid-cols-[32px_1fr_200px_130px_110px_auto] gap-3 items-center px-4 py-3 border-b border-line-2 bg-paper-2 font-mono text-[10.5px] text-ink-3 tracking-[0.06em] uppercase">
             <span />
             <span>Document</span>
             <span>Seller</span>
-            <span>Type</span>
             <span>Grand total</span>
             <span>Status</span>
+            <span className="text-right">Review</span>
           </div>
           {items.map((item) => (
             <QueueRow key={item.extraction_id} item={item} />

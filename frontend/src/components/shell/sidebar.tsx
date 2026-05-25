@@ -10,7 +10,8 @@ import { UsageCard } from "./usage-card";
 
 type Props = {
   organization: OrganizationDTO;
-  documentsCount: number;
+  /** Documents needing review — shown as an attention badge on Review queue. */
+  pendingCount: number;
 };
 
 /**
@@ -22,7 +23,7 @@ type Props = {
  * for now; will read from the backend in step 7 (Dashboard). Usage
  * card is wired to the real org quota as of step 6.
  */
-export function Sidebar({ organization, documentsCount }: Props) {
+export function Sidebar({ organization, pendingCount }: Props) {
   const planLabel = organization.plan === "free" ? "Free" : organization.plan;
 
   return (
@@ -41,14 +42,10 @@ export function Sidebar({ organization, documentsCount }: Props) {
         <NavItem href="/upload" icon={<UploadIcon />}>
           Upload
         </NavItem>
-        <NavItem
-          href="/dashboard"
-          icon={<DocumentsIcon />}
-          count={documentsCount.toLocaleString()}
-        >
+        <NavItem href="/dashboard" icon={<DocumentsIcon />}>
           Documents
         </NavItem>
-        <NavItem href="/review" icon={<ReviewIcon />} count={3}>
+        <NavItem href="/review" icon={<ReviewIcon />} count={pendingCount} attention>
           Review queue
         </NavItem>
       </div>

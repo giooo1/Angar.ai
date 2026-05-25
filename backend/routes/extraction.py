@@ -481,11 +481,16 @@ def get_document_file(
 def list_extractions(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
+    pending: bool = Query(False, description="Only docs needing attention (not yet approved)."),
+    sort: Literal["newest", "oldest"] = Query("newest"),
     db: Session = Depends(get_db),
     current_org: Organization = Depends(get_current_org),
 ) -> ListExtractionsResponse:
-    """List recent extractions, newest first, filtered to the caller's org.
+    """List extractions for the caller's org.
 
+    The worklist calls `pending=true&sort=oldest` (FIFO over docs awaiting
+    review — approval clears them); the archive uses the defaults (everything,
+    newest first). When `pending`, `total` is the needs-attention count.
     Page size capped at 100 so a misbehaving client can't pull the whole
     table at once.
     """
@@ -496,13 +501,18 @@ def list_extractions(
         .join(Document, Extraction.document_id == Document.id)
         .where(Document.organization_id == org_id)
     )
+    if pending:
+        # "Needs attention" = not yet approved (covers failed + extracted-but-
+        # -unverified). Approving sets approved_at, removing it from the queue.
+        base = base.where(Extraction.approved_at.is_(None))
 
     total = db.execute(
         select(func.count()).select_from(base.subquery())
     ).scalar_one()
 
+    order = Extraction.created_at.asc() if sort == "oldest" else Extraction.created_at.desc()
     rows = db.execute(
-        base.order_by(Extraction.created_at.desc())
+        base.order_by(order)
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).scalars().all()

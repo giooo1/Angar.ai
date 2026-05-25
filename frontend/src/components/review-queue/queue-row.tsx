@@ -13,7 +13,6 @@ export function QueueRow({ item }: Props) {
   const canonical = item.canonical_data;
   const sellerName = canonical?.seller?.name ?? "—";
   const docNumber = canonical?.document_number ?? item.extraction_id.slice(0, 8);
-  const docType = canonical?.document_type ?? "unknown";
   const grandTotal = canonical?.grand_total;
   const isMkhedruli =
     canonical?.seller?.script === "mkhedruli" ||
@@ -22,7 +21,7 @@ export function QueueRow({ item }: Props) {
   return (
     <Link
       href={`/review/${item.extraction_id}`}
-      className="grid grid-cols-[32px_1fr_220px_140px_140px_auto] gap-3 items-center px-4 py-3 border-b border-line-2 last:border-b-0 hover:bg-paper-2 transition-colors no-underline text-ink"
+      className="grid grid-cols-[32px_1fr_200px_130px_110px_auto] gap-3 items-center px-4 py-3 border-b border-line-2 last:border-b-0 hover:bg-paper-2 transition-colors no-underline text-ink"
     >
       <span className="doc-thumb" style={{ width: 26, height: 32 }} />
       <div className="min-w-0">
@@ -42,13 +41,18 @@ export function QueueRow({ item }: Props) {
       >
         {sellerName}
       </div>
-      <Chip variant="default">{docType}</Chip>
       <div className="font-mono text-[12.5px] text-ink-2">
         {grandTotal
           ? `${grandTotal.amount} ${grandTotal.currency}`
           : "—"}
       </div>
       <StatusChip status={item.status} />
+      <span className="justify-self-end inline-flex items-center gap-1 text-[13px] font-medium text-accent">
+        Review
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </span>
     </Link>
   );
 }
