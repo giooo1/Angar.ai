@@ -39,6 +39,7 @@ class ExtractionStatusResponse(BaseModel):
     error_message: str | None = None
     field_confidence: dict[str, float] = Field(default_factory=dict)
     processing_time_ms: int | None = None
+    approved_at: datetime | None = None
 
 
 class ListExtractionsResponse(BaseModel):

@@ -230,4 +230,9 @@ class Extraction(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
+    # Human review sign-off — set when a reviewer clicks Approve. Distinct
+    # from `status` (extraction lifecycle) and `canonical.accepted` (the
+    # model's own is-this-an-invoice judgment). Null until approved.
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     document: Mapped["Document"] = relationship(back_populates="extractions")

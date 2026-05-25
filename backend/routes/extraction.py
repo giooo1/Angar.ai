@@ -8,10 +8,14 @@ Celery without changing this contract.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, Request, Response, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from backend import export_formats
+from backend.models import _utcnow
 from backend.rate_limit import limiter
 
 from angar_extraction.extractor import Extractor
@@ -76,7 +80,29 @@ def _status_response(doc: Document, extraction: Extraction) -> ExtractionStatusR
         error_message=extraction.error_message,
         field_confidence=extraction.field_confidence or {},
         processing_time_ms=extraction.processing_time_ms,
+        approved_at=extraction.approved_at,
     )
+
+
+def _load_extraction_or_404(
+    extraction_id: str, db: Session, current_org: Organization
+) -> Extraction:
+    """Fetch an extraction scoped to the caller's org, or raise 404.
+
+    Same 404-not-403 posture as `get_extraction`: not-found and wrong-org are
+    indistinguishable so we don't leak other orgs' ids.
+    """
+    extraction = db.get(Extraction, extraction_id)
+    if extraction is None or extraction.document.organization_id != current_org.id:
+        raise HTTPException(
+            status_code=404,
+            detail=_bilingual_error(
+                "EXTRACTION_NOT_FOUND",
+                f"Extraction {extraction_id} not found.",
+                f"ექსტრაქცია {extraction_id} ვერ მოიძებნა.",
+            ).model_dump(),
+        )
+    return extraction
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +226,95 @@ def get_extraction(
             ).model_dump(),
         )
     return _status_response(extraction.document, extraction)
+
+
+# ---------------------------------------------------------------------------
+# POST /extractions/{id}/approve — human review sign-off
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/extractions/{extraction_id}/approve",
+    response_model=ExtractionStatusResponse,
+    responses={404: {"model": ErrorResponse}},
+)
+def approve_extraction(
+    extraction_id: str = Path(..., description="Extraction ID to approve."),
+    db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_org),
+) -> ExtractionStatusResponse:
+    """Mark an extraction as reviewed-and-approved. Idempotent — re-approving
+    just refreshes the timestamp."""
+    extraction = _load_extraction_or_404(extraction_id, db, current_org)
+    extraction.approved_at = _utcnow()
+    db.commit()
+    db.refresh(extraction)
+    return _status_response(extraction.document, extraction)
+
+
+# ---------------------------------------------------------------------------
+# GET /extractions/{id}/export — download as CSV / XLSX / JSON
+# ---------------------------------------------------------------------------
+
+_EXPORT_FORMATS: dict[str, tuple] = {
+    "csv": (export_formats.to_csv, "text/csv; charset=utf-8", "csv"),
+    "xlsx": (
+        export_formats.to_xlsx,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "xlsx",
+    ),
+    "json": (export_formats.to_json, "application/json", "json"),
+}
+
+
+def _safe_filename_base(extraction: Extraction) -> str:
+    """ASCII-safe filename stem from the document number, falling back to the
+    uploaded filename stem. Non-ASCII stripped so the `filename=` header is
+    valid (Mkhedruli document numbers survive inside the file, not the name)."""
+    canonical = extraction.canonical_data or {}
+    raw = canonical.get("document_number") or extraction.document.original_filename or "export"
+    raw = raw.rsplit(".", 1)[0]  # drop any extension on the fallback filename
+    cleaned = "".join(c if (c.isascii() and (c.isalnum() or c in "-_")) else "_" for c in raw)
+    cleaned = cleaned.strip("_") or "export"
+    return cleaned
+
+
+@router.get(
+    "/extractions/{extraction_id}/export",
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+)
+def export_extraction(
+    extraction_id: str = Path(...),
+    fmt: Literal["csv", "xlsx", "json"] = Query("csv", alias="format"),
+    db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_org),
+) -> Response:
+    """Serialize a completed extraction's canonical data to a downloadable file.
+
+    CSV/XLSX flatten to one row per line item; JSON is the full nested canonical.
+    """
+    extraction = _load_extraction_or_404(extraction_id, db, current_org)
+
+    canonical = extraction.canonical_data
+    if not canonical:
+        # Exists, but never produced data (e.g. a failed extraction) — nothing
+        # to export. 409: conflicts with the resource's current state.
+        raise HTTPException(
+            status_code=409,
+            detail=_bilingual_error(
+                "EXTRACTION_NOT_EXPORTABLE",
+                "This extraction has no data to export.",
+                "ამ ექსტრაქციას არ აქვს ექსპორტისთვის მონაცემები.",
+            ).model_dump(),
+        )
+
+    serializer, media_type, ext = _EXPORT_FORMATS[fmt]
+    content = serializer(canonical)
+    filename = f"{_safe_filename_base(extraction)}.{ext}"
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ---------------------------------------------------------------------------
