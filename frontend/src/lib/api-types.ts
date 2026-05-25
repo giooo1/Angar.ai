@@ -34,6 +34,9 @@ export interface ExtractionStatusResponse {
    *  predating the WS2 confidence heuristic. */
   field_confidence: Record<string, number>;
   processing_time_ms: number | null;
+  /** ISO 8601 UTC timestamp set when a reviewer approves the extraction;
+   *  null until then. Distinct from `status` and `canonical.accepted`. */
+  approved_at: string | null;
 }
 
 export interface ListExtractionsResponse {

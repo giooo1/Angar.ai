@@ -140,7 +140,12 @@ export default function ReviewDetailPage() {
               vatTreatmentReason={canonical.vat_treatment_reason}
               rejectionReason={canonical.rejection_reason}
             />
-            <ReviewActionBar documentId={data.document_id} />
+            <ReviewActionBar
+              documentId={data.document_id}
+              extractionId={data.extraction_id}
+              approvedAt={data.approved_at}
+              filenameBase={canonical.document_number ?? "export"}
+            />
           </div>
         ) : (
           <ExtractionErrorCard

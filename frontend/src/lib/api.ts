@@ -196,6 +196,48 @@ export async function reextract(
   return (await res.json()) as UploadResponse;
 }
 
+/** Mark an extraction as reviewed-and-approved. Idempotent server-side. */
+export async function approveExtraction(
+  extractionId: string,
+  signal?: AbortSignal,
+): Promise<ExtractionStatusResponse> {
+  const res = await fetch(
+    `${API_BASE}/api/v1/extractions/${extractionId}/approve`,
+    { method: "POST", signal, credentials: "include" },
+  );
+  if (!res.ok) await unwrapError(res);
+  return (await res.json()) as ExtractionStatusResponse;
+}
+
+export type ExportFormat = "csv" | "xlsx" | "json";
+
+/**
+ * Download an extraction's data in the given format. Fetches the blob (so a
+ * 401/404 surfaces as an ApiError rather than navigating away, and binary
+ * XLSX arrives intact), then triggers a synthetic download. `filename` is the
+ * base name; the extension is appended from the format.
+ */
+export async function downloadExport(
+  extractionId: string,
+  format: ExportFormat,
+  filename: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/v1/extractions/${extractionId}/export?format=${format}`,
+    { credentials: "include" },
+  );
+  if (!res.ok) await unwrapError(res);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filename}.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /**
  * Poll `/extractions/{id}` until status becomes terminal or the timeout
  * fires. Cadence per Phase 3 §3.3: 2s for the first 30s, then 5s, abort
