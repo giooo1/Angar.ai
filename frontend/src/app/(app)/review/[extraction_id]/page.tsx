@@ -57,7 +57,7 @@ export default function ReviewDetailPage() {
   const canonical = data.corrected_data ?? data.canonical_data;
 
   return (
-    <main className="px-8 py-6 pb-2 w-full max-w-[1480px]">
+    <main className="w-full px-4 py-3">
       <FileBar extraction={data} canonical={canonical} />
       <ReviewWorkspace data={data} />
     </main>

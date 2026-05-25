@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { saveCorrections } from "@/lib/api";
 import type { ExtractionStatusResponse } from "@/lib/api-types";
 import type { CanonicalInvoice } from "@/lib/canonical";
-import { countByBucket, meanConfidence } from "@/lib/confidence";
+import { meanConfidence } from "@/lib/confidence";
 
 import { DataPane } from "./data-pane";
 import { ExtractionErrorCard } from "./extraction-error-card";
@@ -58,7 +58,6 @@ export function ReviewWorkspace({ data }: Props) {
 
   const confidence = data.field_confidence ?? {};
   const overall = meanConfidence(confidence);
-  const buckets = countByBucket(confidence);
 
   const draftRef = useRef<CanonicalInvoice | null>(null);
   if (draftRef.current === null && canonical) {
@@ -99,8 +98,8 @@ export function ReviewWorkspace({ data }: Props) {
 
   return (
     <ReviewEditProvider value={ctx}>
-      {/* Mobile tab toggle (hidden ≥768px) */}
-      <div className="md:hidden mb-3 inline-flex rounded-lg border border-line bg-paper p-0.5 text-[13px] font-medium">
+      {/* Mobile/tablet tab toggle (hidden ≥1024px) */}
+      <div className="lg:hidden mb-3 inline-flex rounded-lg border border-line bg-paper p-0.5 text-[13px] font-medium">
         {(["document", "data"] as Tab[]).map((t) => (
           <button
             key={t}
@@ -116,8 +115,8 @@ export function ReviewWorkspace({ data }: Props) {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[55fr_45fr] xl:grid-cols-[60fr_40fr] gap-4 items-start">
-        <div className={cn("min-w-0", tab !== "document" && "hidden md:block")}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_440px] gap-3 items-start">
+        <div className={cn("min-w-0", tab !== "document" && "hidden lg:block")}>
           <PdfViewer
             documentId={data.document_id}
             filename={filename}
@@ -125,7 +124,7 @@ export function ReviewWorkspace({ data }: Props) {
             onToggleFullscreen={() => setFullscreen(true)}
           />
         </div>
-        <div className={cn("min-w-0", tab !== "data" && "hidden md:block")}>
+        <div className={cn("min-w-0", tab !== "data" && "hidden lg:block")}>
           {!canonical ? (
             <ExtractionErrorCard
               errorCode={data.error_code}
@@ -151,7 +150,6 @@ export function ReviewWorkspace({ data }: Props) {
               canonical={draftRef.current ?? canonical}
               confidence={confidence}
               overall={overall}
-              buckets={buckets}
               dirty={dirty}
               onSave={onSave}
             />
@@ -168,7 +166,6 @@ export function ReviewWorkspace({ data }: Props) {
           canonical={draftRef.current ?? canonical}
           confidence={confidence}
           overall={overall}
-          buckets={buckets}
           dirty={dirty}
           onSave={onSave}
         />

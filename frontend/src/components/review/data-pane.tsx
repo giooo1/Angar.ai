@@ -9,7 +9,6 @@ import { LineItemsTable } from "./line-items-table";
 import { NotesPanel } from "./notes-panel";
 import { PartyBlock } from "./party-block";
 import { ReviewHeader } from "./review-header";
-import { RiskStrip } from "./risk-strip";
 import { TotalsBlock } from "./totals-block";
 
 type Props = {
@@ -19,7 +18,6 @@ type Props = {
   canonical: CanonicalInvoice;
   confidence: Record<string, number>;
   overall: number | null;
-  buckets: { high: number; med: number; low: number };
   dirty: boolean;
   onSave: () => Promise<void>;
 };
@@ -30,7 +28,7 @@ type Props = {
  * Mounted in the side-by-side layout and (WS3) in the fullscreen drawer —
  * both inside the same edit provider, so edits sync through the shared draft.
  */
-export function DataPane({ data, canonical, confidence, overall, buckets, dirty, onSave }: Props) {
+export function DataPane({ data, canonical, confidence, overall, dirty, onSave }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <ReviewHeader
@@ -43,7 +41,6 @@ export function DataPane({ data, canonical, confidence, overall, buckets, dirty,
         accepted={canonical.accepted}
         overall={overall}
       />
-      <RiskStrip high={buckets.high} med={buckets.med} low={buckets.low} />
       <DocumentStrip
         extractionId={data.extraction_id}
         documentNumber={canonical.document_number}

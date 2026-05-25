@@ -19,7 +19,6 @@ type Props = {
   canonical: CanonicalInvoice;
   confidence: Record<string, number>;
   overall: number | null;
-  buckets: { high: number; med: number; low: number };
   dirty: boolean;
   onSave: () => Promise<void>;
 };
@@ -39,7 +38,6 @@ export function PdfFullscreen({
   canonical,
   confidence,
   overall,
-  buckets,
   dirty,
   onSave,
 }: Props) {
@@ -94,7 +92,6 @@ export function PdfFullscreen({
               canonical={canonical}
               confidence={confidence}
               overall={overall}
-              buckets={buckets}
               dirty={dirty}
               onSave={onSave}
             />
