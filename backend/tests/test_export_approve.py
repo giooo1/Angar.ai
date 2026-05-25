@@ -303,3 +303,42 @@ class TestExportErrors:
         ex = _make_extraction(db_session, other_org, test_user, _canonical_with_items())
         r = client.get(f"/api/v1/extractions/{ex.id}/export?format=csv")
         assert r.status_code == 404
+
+
+class TestBulkActions:
+    def test_bulk_delete_soft_deletes_and_hides(self, client, db_session, test_org, test_user) -> None:
+        a = _make_extraction(db_session, test_org, test_user, _canonical_with_items())
+        _make_extraction(db_session, test_org, test_user, _canonical_with_items())
+        assert client.get("/api/v1/extractions").json()["total"] == 2
+        r = client.post("/api/v1/extractions/bulk-delete", json={"extraction_ids": [a.id]})
+        assert r.status_code == 200
+        assert r.json()["deleted"] == 1
+        body = client.get("/api/v1/extractions").json()
+        assert body["total"] == 1
+        assert a.id not in {i["extraction_id"] for i in body["items"]}
+
+    def test_bulk_delete_ignores_other_org(self, client, db_session, other_org, test_user) -> None:
+        ex = _make_extraction(db_session, other_org, test_user, _canonical_with_items())
+        r = client.post("/api/v1/extractions/bulk-delete", json={"extraction_ids": [ex.id]})
+        assert r.status_code == 200
+        assert r.json()["deleted"] == 0
+
+    def test_bulk_export_combined_csv(self, client, db_session, test_org, test_user) -> None:
+        a = _make_extraction(db_session, test_org, test_user, _canonical_with_items())
+        b = _make_extraction(db_session, test_org, test_user, _canonical_with_items())
+        r = client.post(
+            "/api/v1/extractions/bulk-export",
+            json={"extraction_ids": [a.id, b.id]},
+        )
+        assert r.status_code == 200, r.text
+        assert r.headers["content-type"].startswith("text/csv")
+        assert r.content.startswith(b"\xef\xbb\xbf")  # UTF-8 BOM
+        body = r.content.decode("utf-8-sig")
+        data_lines = [ln for ln in body.splitlines() if ln.strip()]
+        # one shared header + 2 line items per doc × 2 docs
+        assert len(data_lines) == 1 + 4
+        assert GEO_DESC in body
+
+    def test_bulk_export_empty_is_400(self, client) -> None:
+        r = client.post("/api/v1/extractions/bulk-export", json={"extraction_ids": []})
+        assert r.status_code == 400

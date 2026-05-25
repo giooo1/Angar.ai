@@ -1,16 +1,23 @@
+"use client";
+
 import Link from "next/link";
 
 import { Chip } from "@/components/ui/chip";
+import { cn } from "@/lib/utils";
 import type { ExtractionStatusResponse } from "@/lib/api-types";
 
-type Props = { item: ExtractionStatusResponse };
+type Props = {
+  item: ExtractionStatusResponse;
+  selected: boolean;
+  onToggle: () => void;
+};
 
 /**
- * One row in the Documents archive: thumb · filename/number · type · date ·
- * seller · grand total · status · Open. Click anywhere → /review/<id> (the
- * review screen, where the data is also editable).
+ * One row in the Documents archive: checkbox · thumb · filename/number · type ·
+ * date · seller · grand total · status · Open. The row links to /review/<id>;
+ * the checkbox toggles selection without navigating.
  */
-export function DocumentRow({ item }: Props) {
+export function DocumentRow({ item, selected, onToggle }: Props) {
   const canonical = item.canonical_data;
   const sellerName = canonical?.seller?.name ?? "—";
   const docNumber = canonical?.document_number ?? item.extraction_id.slice(0, 8);
@@ -24,8 +31,25 @@ export function DocumentRow({ item }: Props) {
   return (
     <Link
       href={`/review/${item.extraction_id}`}
-      className="grid grid-cols-[40px_1fr_120px_120px_200px_130px_110px_auto] gap-3 items-center px-4 py-3 border-b border-line-2 last:border-b-0 hover:bg-paper-2 transition-colors no-underline text-ink"
+      className={cn(
+        "grid grid-cols-[28px_40px_1fr_120px_120px_200px_130px_110px_auto] gap-3 items-center px-4 py-3",
+        "border-b border-line-2 last:border-b-0 transition-colors no-underline text-ink",
+        selected ? "bg-accent-soft/40" : "hover:bg-paper-2",
+      )}
     >
+      <input
+        type="checkbox"
+        checked={selected}
+        // Toggle selection without following the row link.
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggle();
+        }}
+        onChange={() => {}}
+        aria-label="Select document"
+        className="w-3.5 h-3.5 cursor-pointer accent-[var(--color-accent-2)]"
+      />
       <span className="doc-thumb" style={{ width: 28, height: 36 }} />
       <div className="min-w-0">
         <div className="text-[13.5px] font-medium tracking-[-0.005em] overflow-hidden text-ellipsis whitespace-nowrap">

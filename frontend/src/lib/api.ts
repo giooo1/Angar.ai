@@ -261,6 +261,41 @@ export async function downloadExport(
   URL.revokeObjectURL(url);
 }
 
+/** Soft-delete the documents behind the selected extractions. Returns the
+ *  number of documents deleted. */
+export async function bulkDeleteExtractions(
+  extractionIds: string[],
+): Promise<{ deleted: number }> {
+  const res = await fetch(`${API_BASE}/api/v1/extractions/bulk-delete`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ extraction_ids: extractionIds }),
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+  return (await res.json()) as { deleted: number };
+}
+
+/** Download the selected documents as one combined CSV (all line items). */
+export async function downloadBulkCsv(extractionIds: string[]): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/extractions/bulk-export`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ extraction_ids: extractionIds }),
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "documents-export.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /**
  * Poll `/extractions/{id}` until status becomes terminal or the timeout
  * fires. Cadence per Phase 3 §3.3: 2s for the first 30s, then 5s, abort

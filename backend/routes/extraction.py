@@ -22,6 +22,8 @@ from angar_extraction.extractor import Extractor
 from angar_schema.canonical import CanonicalInvoice
 from backend.api_schemas import (
     ApiError,
+    BulkDeleteResponse,
+    BulkIdsRequest,
     ErrorResponse,
     ExtractionStatusResponse,
     ListExtractionsResponse,
@@ -349,6 +351,76 @@ def export_extraction(
 
 
 # ---------------------------------------------------------------------------
+# Bulk archive actions — delete / export selected
+# ---------------------------------------------------------------------------
+
+def _owned_extractions(ids: list[str], db: Session, current_org: Organization) -> list[Extraction]:
+    """Caller-owned, non-deleted extractions in `ids` (newest first). Silently
+    drops ids from other orgs — no error, no existence leak."""
+    if not ids:
+        return []
+    return list(
+        db.execute(
+            select(Extraction)
+            .join(Document, Extraction.document_id == Document.id)
+            .where(Extraction.id.in_(ids))
+            .where(Document.organization_id == current_org.id)
+            .where(Document.deleted_at.is_(None))
+            .order_by(Extraction.created_at.desc())
+        ).scalars().all()
+    )
+
+
+@router.post("/extractions/bulk-delete", response_model=BulkDeleteResponse)
+def bulk_delete(
+    body: BulkIdsRequest,
+    db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_org),
+) -> BulkDeleteResponse:
+    """Soft-delete the documents behind the selected extractions (recoverable —
+    hidden from lists via Document.deleted_at). Idempotent; org-gated."""
+    rows = _owned_extractions(body.extraction_ids, db, current_org)
+    docs = {r.document_id: r.document for r in rows}  # dedupe per document
+    now = _utcnow()
+    for doc in docs.values():
+        doc.deleted_at = now
+    db.commit()
+    return BulkDeleteResponse(deleted=len(docs))
+
+
+@router.post("/extractions/bulk-export")
+def bulk_export(
+    body: BulkIdsRequest,
+    db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_org),
+) -> Response:
+    """Combined CSV of the selected documents' line items (one shared header).
+    Reads corrected-over-raw per doc; skips any with no canonical data."""
+    if not body.extraction_ids:
+        raise HTTPException(
+            status_code=400,
+            detail=_bilingual_error(
+                "NO_SELECTION", "No documents selected.", "დოკუმენტები არ არის არჩეული."
+            ).model_dump(),
+        )
+    if len(body.extraction_ids) > 500:
+        raise HTTPException(
+            status_code=400,
+            detail=_bilingual_error(
+                "TOO_MANY", "Select at most 500 documents.", "აირჩიეთ მაქსიმუმ 500 დოკუმენტი."
+            ).model_dump(),
+        )
+    rows = _owned_extractions(body.extraction_ids, db, current_org)
+    canonicals = [r.corrected_data or r.canonical_data for r in rows if (r.corrected_data or r.canonical_data)]
+    content = export_formats.to_combined_csv(canonicals)
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="documents-export.csv"'},
+    )
+
+
+# ---------------------------------------------------------------------------
 # POST /documents/{id}/extract — re-extract
 # ---------------------------------------------------------------------------
 
@@ -513,6 +585,7 @@ def list_extractions(
         select(Extraction)
         .join(Document, Extraction.document_id == Document.id)
         .where(Document.organization_id == org_id)
+        .where(Document.deleted_at.is_(None))
     )
     if pending:
         # "Needs attention" = not yet approved (covers failed + extracted-but-

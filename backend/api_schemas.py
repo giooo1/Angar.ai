@@ -52,6 +52,16 @@ class ListExtractionsResponse(BaseModel):
     page_size: int
 
 
+class BulkIdsRequest(BaseModel):
+    """Body for bulk archive actions (delete / export selected)."""
+
+    extraction_ids: list[str]
+
+
+class BulkDeleteResponse(BaseModel):
+    deleted: int
+
+
 class ApiError(BaseModel):
     """Inner error payload per Phase 3 §3.1."""
 

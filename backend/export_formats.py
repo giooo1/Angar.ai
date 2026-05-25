@@ -104,6 +104,22 @@ def to_csv(canonical: dict[str, Any]) -> bytes:
     return (_BOM + buf.getvalue()).encode("utf-8")
 
 
+def to_combined_csv(canonicals: list[dict[str, Any]]) -> bytes:
+    """Merge several documents' line items into one CSV under a shared header.
+
+    Each row already carries the document-identifying columns (number, date,
+    seller…) from `flatten_rows`, so a flat stack is self-describing. UTF-8 BOM
+    so Excel renders Mkhedruli.
+    """
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(COLUMNS)
+    for canonical in canonicals:
+        _, rows = flatten_rows(canonical)
+        writer.writerows(rows)
+    return (_BOM + buf.getvalue()).encode("utf-8")
+
+
 def to_xlsx(canonical: dict[str, Any]) -> bytes:
     from openpyxl import Workbook
 
