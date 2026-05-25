@@ -365,3 +365,90 @@ class TestListExtractions:
     def test_invalid_page_returns_422(self, client: TestClient) -> None:
         r = client.get("/api/v1/extractions?page=0")
         assert r.status_code == 422  # FastAPI validation: page must be >= 1
+
+
+class TestArchiveFilters:
+    def _insert(self, db, org, user, *, filename, canonical, corrected=None) -> str:
+        from backend.models import Document, Extraction
+        import uuid
+
+        doc = Document(
+            organization_id=org.id,
+            uploaded_by_user_id=user.id,
+            original_filename=filename,
+            file_sha256=uuid.uuid4().hex,
+            file_size_bytes=10,
+            file_mime_type="application/pdf",
+            storage_path=f"s/{uuid.uuid4().hex}.pdf",
+        )
+        db.add(doc)
+        db.flush()
+        ext = Extraction(
+            document_id=doc.id,
+            status="completed",
+            prompt_version="p",
+            model_version="m",
+            canonical_data=canonical,
+        )
+        # Only set when present — leaving it unset keeps SQL NULL (a JSON column
+        # turns an explicit Python None into JSON 'null', which isn't SQL NULL).
+        if corrected is not None:
+            ext.corrected_data = corrected
+        db.add(ext)
+        db.commit()
+        return ext.id
+
+    @pytest.fixture
+    def seeded(self, client, db_session, test_org, test_user) -> dict[str, str]:
+        # client fixture ensures get_db override + auth are in place.
+        a = self._insert(
+            db_session, test_org, test_user,
+            filename="alpha.pdf",
+            canonical={"document_type": "regular_invoice", "accepted": True,
+                       "document_number": "INV-100", "seller": {"name": "Acme"},
+                       "document_date": "2026-03-15"},
+        )
+        b = self._insert(
+            db_session, test_org, test_user,
+            filename="beta.pdf",
+            canonical={"document_type": "waybill", "accepted": False,
+                       "document_number": "WB-200", "seller": {"name": "ვერტექს"},
+                       "document_date": "2026-05-20"},
+            corrected={"document_type": "waybill", "accepted": False,
+                       "document_number": "WB-200-edited", "seller": {"name": "ვერტექს"},
+                       "document_date": "2026-05-20"},
+        )
+        c = self._insert(
+            db_session, test_org, test_user,
+            filename="gamma.pdf",
+            canonical={"document_type": "receipt", "accepted": True,
+                       "document_number": "RC-300", "seller": {"name": "Beta Co"},
+                       "document_date": None},
+        )
+        return {"a": a, "b": b, "c": c}
+
+    def _ids(self, client, query: str) -> set[str]:
+        body = client.get(f"/api/v1/extractions?{query}").json()
+        return {i["extraction_id"] for i in body["items"]}
+
+    def test_search_matches_seller(self, client, seeded) -> None:
+        assert self._ids(client, "q=acme") == {seeded["a"]}
+
+    def test_search_matches_filename_or_seller(self, client, seeded) -> None:
+        # "beta" hits beta.pdf (filename) and "Beta Co" (seller).
+        assert self._ids(client, "q=beta") == {seeded["b"], seeded["c"]}
+
+    def test_filter_document_type(self, client, seeded) -> None:
+        assert self._ids(client, "document_type=waybill") == {seeded["b"]}
+
+    def test_filter_accepted_false(self, client, seeded) -> None:
+        assert self._ids(client, "accepted=false") == {seeded["b"]}
+
+    def test_filter_has_corrections(self, client, seeded) -> None:
+        assert self._ids(client, "has_corrections=true") == {seeded["b"]}
+
+    def test_filter_date_window(self, client, seeded) -> None:
+        # April onward: only B (May). A is March, C has no date.
+        assert self._ids(client, "date_from=2026-04-01") == {seeded["b"]}
+        # Q1 window: only A.
+        assert self._ids(client, "date_from=2026-01-01&date_to=2026-04-01") == {seeded["a"]}

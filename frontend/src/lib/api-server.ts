@@ -27,6 +27,13 @@ export async function listExtractionsServer(params: {
   /** Worklist mode: only docs needing attention (not yet approved). */
   pending?: boolean;
   sort?: "newest" | "oldest";
+  // Archive filters
+  q?: string;
+  documentType?: string;
+  accepted?: boolean;
+  hasCorrections?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
 }): Promise<ListExtractionsResponse> {
   const cookieHeader = await sessionCookieHeader();
   const qs = new URLSearchParams({
@@ -35,6 +42,12 @@ export async function listExtractionsServer(params: {
   });
   if (params.pending) qs.set("pending", "true");
   if (params.sort) qs.set("sort", params.sort);
+  if (params.q) qs.set("q", params.q);
+  if (params.documentType) qs.set("document_type", params.documentType);
+  if (params.accepted !== undefined) qs.set("accepted", String(params.accepted));
+  if (params.hasCorrections) qs.set("has_corrections", "true");
+  if (params.dateFrom) qs.set("date_from", params.dateFrom);
+  if (params.dateTo) qs.set("date_to", params.dateTo);
   const res = await fetch(`${apiBase}/api/v1/extractions?${qs}`, {
     cache: "no-store",
     headers: cookieHeader ? { Cookie: cookieHeader } : {},

@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, Request, Response, UploadFile, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from backend import export_formats
@@ -483,6 +483,12 @@ def list_extractions(
     page_size: int = Query(25, ge=1, le=100),
     pending: bool = Query(False, description="Only docs needing attention (not yet approved)."),
     sort: Literal["newest", "oldest"] = Query("newest"),
+    q: str | None = Query(None, description="Search filename / document number / seller name."),
+    document_type: str | None = Query(None),
+    accepted: bool | None = Query(None),
+    has_corrections: bool = Query(False),
+    date_from: str | None = Query(None, description="Invoice date >= (YYYY-MM-DD)."),
+    date_to: str | None = Query(None, description="Invoice date <= (YYYY-MM-DD)."),
     db: Session = Depends(get_db),
     current_org: Organization = Depends(get_current_org),
 ) -> ListExtractionsResponse:
@@ -490,11 +496,18 @@ def list_extractions(
 
     The worklist calls `pending=true&sort=oldest` (FIFO over docs awaiting
     review — approval clears them); the archive uses the defaults (everything,
-    newest first). When `pending`, `total` is the needs-attention count.
+    newest first) plus search/filters. When `pending`, `total` is the
+    needs-attention count; otherwise `total` reflects any active filters.
     Page size capped at 100 so a misbehaving client can't pull the whole
     table at once.
+
+    Filters match the raw `canonical_data` classification (corrections to
+    type/accepted are rare and not reflected in filtering for v1).
     """
     org_id = current_org.id
+
+    def _json(path: str):
+        return func.json_extract(Extraction.canonical_data, path)
 
     base = (
         select(Extraction)
@@ -505,6 +518,26 @@ def list_extractions(
         # "Needs attention" = not yet approved (covers failed + extracted-but-
         # -unverified). Approving sets approved_at, removing it from the queue.
         base = base.where(Extraction.approved_at.is_(None))
+    if q:
+        like = f"%{q}%"
+        base = base.where(
+            or_(
+                Document.original_filename.ilike(like),
+                _json("$.document_number").ilike(like),
+                _json("$.seller.name").ilike(like),
+            )
+        )
+    if document_type:
+        base = base.where(_json("$.document_type") == document_type)
+    if accepted is not None:
+        # SQLite json_extract returns 1/0 for JSON booleans.
+        base = base.where(_json("$.accepted") == (1 if accepted else 0))
+    if has_corrections:
+        base = base.where(Extraction.corrected_data.is_not(None))
+    if date_from:
+        base = base.where(_json("$.document_date") >= date_from)
+    if date_to:
+        base = base.where(_json("$.document_date") <= date_to)
 
     total = db.execute(
         select(func.count()).select_from(base.subquery())
