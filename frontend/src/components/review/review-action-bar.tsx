@@ -17,6 +17,10 @@ type Props = {
   approvedAt: string | null;
   /** Base filename for downloads (extension added per format). */
   filenameBase: string;
+  /** True when there are unsaved edits. */
+  dirty: boolean;
+  /** Persist the current draft as corrections. Rejects on failure. */
+  onSave: () => Promise<void>;
 };
 
 const EXPORTS: { label: string; format: ExportFormat; color: string }[] = [
@@ -26,17 +30,26 @@ const EXPORTS: { label: string; format: ExportFormat; color: string }[] = [
 ];
 
 /**
- * Sticky action bar at the foot of the right pane. Re-extract on the left
- * (ghost link); Export menu (CSV/XLSX/JSON) + Approve on the right.
+ * Sticky action bar at the foot of the right pane. Re-extract on the left;
+ * Save · Export · Approve on the right.
  *
- * Approve marks the extraction reviewed (POST /approve, idempotent). Export
- * streams the file from the backend so encoding/serialization stay in one
- * place (UTF-8 BOM for CSV, openpyxl for XLSX).
+ * Save persists reviewer edits (PUT /corrections). Approve and Export both
+ * flush unsaved edits first, so a download or sign-off always reflects what's
+ * on screen. Export streams the file from the backend (UTF-8 BOM for CSV,
+ * openpyxl for XLSX); the backend reads corrected-over-raw.
  */
-export function ReviewActionBar({ documentId, extractionId, approvedAt, filenameBase }: Props) {
+export function ReviewActionBar({
+  documentId,
+  extractionId,
+  approvedAt,
+  filenameBase,
+  dirty,
+  onSave,
+}: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [approved, setApproved] = useState<string | null>(approvedAt);
   const [err, setErr] = useState<string | null>(null);
@@ -53,10 +66,23 @@ export function ReviewActionBar({ documentId, extractionId, approvedAt, filename
     }
   };
 
+  const onSaveClick = async () => {
+    setSaving(true);
+    setErr(null);
+    try {
+      await onSave();
+    } catch {
+      setErr("Couldn't save edits — try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const onApprove = async () => {
     setApproving(true);
     setErr(null);
     try {
+      if (dirty) await onSave();
       const r = await approveExtraction(extractionId);
       setApproved(r.approved_at);
     } catch {
@@ -70,6 +96,7 @@ export function ReviewActionBar({ documentId, extractionId, approvedAt, filename
     setExportOpen(false);
     setErr(null);
     try {
+      if (dirty) await onSave();
       await downloadExport(extractionId, format, filenameBase);
     } catch {
       setErr(`Couldn't export ${format.toUpperCase()} — try again.`);
@@ -91,6 +118,15 @@ export function ReviewActionBar({ documentId, extractionId, approvedAt, filename
         {err && <span className="text-[12.5px] text-[#b8342f]">{err}</span>}
       </div>
       <div className="flex gap-2.5 items-center">
+        <button
+          type="button"
+          onClick={onSaveClick}
+          disabled={!dirty || saving}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md text-[13.5px] font-medium cursor-pointer disabled:cursor-default enabled:bg-accent-soft enabled:text-accent enabled:hover:brightness-95 disabled:text-ink-3"
+          title={dirty ? "Save your edits" : "No unsaved changes"}
+        >
+          {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
+        </button>
         <div className="relative">
           <button
             type="button"

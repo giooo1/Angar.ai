@@ -20,6 +20,7 @@ import {
   type SessionResponse,
   type UploadResponse,
 } from "./api-types";
+import type { CanonicalInvoice } from "./canonical";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
@@ -204,6 +205,28 @@ export async function approveExtraction(
   const res = await fetch(
     `${API_BASE}/api/v1/extractions/${extractionId}/approve`,
     { method: "POST", signal, credentials: "include" },
+  );
+  if (!res.ok) await unwrapError(res);
+  return (await res.json()) as ExtractionStatusResponse;
+}
+
+/** Persist reviewer edits. The body is the full (edited) canonical; the
+ *  backend validates it and stores it in `corrected_data` without touching
+ *  the model's raw `canonical_data`. */
+export async function saveCorrections(
+  extractionId: string,
+  corrected: CanonicalInvoice,
+  signal?: AbortSignal,
+): Promise<ExtractionStatusResponse> {
+  const res = await fetch(
+    `${API_BASE}/api/v1/extractions/${extractionId}/corrections`,
+    {
+      method: "PUT",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(corrected),
+      signal,
+      credentials: "include",
+    },
   );
   if (!res.ok) await unwrapError(res);
   return (await res.json()) as ExtractionStatusResponse;

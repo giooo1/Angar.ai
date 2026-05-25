@@ -10,6 +10,7 @@ import {
   setVerified,
   type ConfidenceBucket,
 } from "@/lib/confidence";
+import { commitText, useReviewEdit } from "./review-edit-context";
 
 type Props = {
   /** Short uppercase label rendered on the left. */
@@ -26,6 +27,9 @@ type Props = {
   valueClassName?: string;
   /** When true the row spans the value column full-width (no chip column). */
   full?: boolean;
+  /** Set false for enum/derived values that can't be safely edited as free
+   *  text (e.g. party_type renders a label, not the stored value). */
+  editable?: boolean;
 };
 
 /**
@@ -50,8 +54,11 @@ export function ConfidenceRow({
   extractionId,
   valueClassName,
   full,
+  editable = true,
 }: Props) {
   const [verified, setVerifiedState] = useState(false);
+  const edit = useReviewEdit();
+  const canEdit = editable && edit.editable;
 
   useEffect(() => {
     setVerifiedState(isVerified(extractionId, fieldPath));
@@ -99,8 +106,13 @@ export function ConfidenceRow({
           effectiveBucket === "low" && "border-error/25",
           valueClassName,
         )}
-        contentEditable
+        contentEditable={canEdit}
         suppressContentEditableWarning
+        onBlur={
+          canEdit
+            ? (e) => edit.updateField(fieldPath, commitText(e.currentTarget.textContent ?? ""))
+            : undefined
+        }
       >
         {value}
       </span>

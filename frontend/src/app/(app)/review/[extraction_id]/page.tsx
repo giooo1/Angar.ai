@@ -2,35 +2,24 @@
 
 import { useParams } from "next/navigation";
 
-import { AcceptanceBanner } from "@/components/review/acceptance-banner";
-import { DocumentStrip } from "@/components/review/document-strip";
 import { ExtractionErrorCard } from "@/components/review/extraction-error-card";
 import { FileBar } from "@/components/review/file-bar";
-import { FlagsBlock } from "@/components/review/flags-block";
-import { LineItemsTable } from "@/components/review/line-items-table";
-import { NotesPanel } from "@/components/review/notes-panel";
-import { PartyBlock } from "@/components/review/party-block";
 import { PdfPane } from "@/components/review/pdf-pane";
-import { ReviewActionBar } from "@/components/review/review-action-bar";
-import { RiskStrip } from "@/components/review/risk-strip";
-import { TotalsBlock } from "@/components/review/totals-block";
+import { ReviewBody } from "@/components/review/review-body";
 import { useExtraction } from "@/hooks/use-extraction";
 import { documentFileUrl } from "@/lib/api";
-import { countByBucket, meanConfidence } from "@/lib/confidence";
 
 /**
  * Review v2 — confidence-first.
  *
  * Left: sticky PDF pane with a zoom toolbar (buttons visual-only for v1).
- * Right: acceptance banner → risk strip → Document / Seller / Buyer
- *        / Line items / Totals / Flags / Notes → sticky action bar.
+ * Right: the editable <ReviewBody> — acceptance banner → risk strip →
+ *        Document / Seller / Buyer / Line items / Totals / Flags / Notes
+ *        → sticky action bar with Save / Approve / Export.
  *
- * Per-field confidence comes from `data.field_confidence` (backend
- * heuristic, WS2). The risk strip counts each field into high/med/low
- * buckets so the user can scan for what needs attention at a glance.
- *
- * Failed extractions still render `<ExtractionErrorCard>` for the
- * right pane (unchanged from WS2).
+ * The screen shows `corrected_data` when the user has saved edits, else the
+ * model's raw `canonical_data`. Failed extractions render
+ * `<ExtractionErrorCard>` instead of the body.
  */
 export default function ReviewDetailPage() {
   const params = useParams<{ extraction_id: string }>();
@@ -71,10 +60,8 @@ export default function ReviewDetailPage() {
     );
   }
 
-  const canonical = data.canonical_data;
-  const confidence = data.field_confidence ?? {};
-  const overall = meanConfidence(confidence);
-  const buckets = countByBucket(confidence);
+  // Show reviewer corrections when present, else the model's raw output.
+  const canonical = data.corrected_data ?? data.canonical_data;
 
   return (
     <main className="px-8 py-6 pb-2 w-full max-w-[1480px]">
@@ -87,66 +74,7 @@ export default function ReviewDetailPage() {
         />
 
         {canonical ? (
-          <div className="flex flex-col gap-3.5">
-            <AcceptanceBanner
-              accepted={canonical.accepted}
-              rejectionReason={canonical.rejection_reason}
-              overall={overall}
-              confidentCount={buckets.high}
-              needsReviewCount={buckets.med + buckets.low}
-            />
-            <RiskStrip
-              high={buckets.high}
-              med={buckets.med}
-              low={buckets.low}
-            />
-            <DocumentStrip
-              extractionId={data.extraction_id}
-              documentNumber={canonical.document_number}
-              documentDate={canonical.document_date}
-              currency={canonical.document_currency}
-              confidence={confidence}
-            />
-            <PartyBlock
-              side="seller"
-              title="Seller"
-              letter="S"
-              party={canonical.seller}
-              confidence={confidence}
-              extractionId={data.extraction_id}
-            />
-            <PartyBlock
-              side="buyer"
-              title="Buyer"
-              letter="B"
-              party={canonical.buyer}
-              confidence={confidence}
-              extractionId={data.extraction_id}
-            />
-            <LineItemsTable items={canonical.items} />
-            <TotalsBlock
-              extractionId={data.extraction_id}
-              subtotal={canonical.subtotal_total}
-              vat={canonical.vat_total}
-              discount={canonical.discount_total}
-              shipping={canonical.shipping_cost}
-              grand={canonical.grand_total}
-              confidence={confidence}
-            />
-            <FlagsBlock canonical={canonical} />
-            <NotesPanel
-              notes={canonical.extraction_notes}
-              warnings={data.warnings}
-              vatTreatmentReason={canonical.vat_treatment_reason}
-              rejectionReason={canonical.rejection_reason}
-            />
-            <ReviewActionBar
-              documentId={data.document_id}
-              extractionId={data.extraction_id}
-              approvedAt={data.approved_at}
-              filenameBase={canonical.document_number ?? "export"}
-            />
-          </div>
+          <ReviewBody data={data} canonical={canonical} />
         ) : (
           <ExtractionErrorCard
             errorCode={data.error_code}

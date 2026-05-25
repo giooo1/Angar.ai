@@ -26,6 +26,10 @@ export interface ExtractionStatusResponse {
   prompt_version: string;
   model_version: string;
   canonical_data: CanonicalInvoice | null;
+  /** Reviewer edits, null until the user saves. The review screen and exports
+   *  prefer this over `canonical_data` when present; `canonical_data` always
+   *  keeps the model's raw output. */
+  corrected_data: CanonicalInvoice | null;
   warnings: string[];
   error_code: string | null;
   error_message: string | null;

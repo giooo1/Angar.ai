@@ -10,6 +10,7 @@ import {
   setVerified,
   type ConfidenceBucket,
 } from "@/lib/confidence";
+import { commitText, useReviewEdit } from "./review-edit-context";
 import { SectionBlock } from "./section-block";
 
 type Props = {
@@ -75,6 +76,7 @@ function Cell({
   confidence?: number;
 }) {
   const [verified, setVerifiedState] = useState(false);
+  const edit = useReviewEdit();
 
   useEffect(() => {
     setVerifiedState(isVerified(extractionId, fieldPath));
@@ -110,8 +112,13 @@ function Cell({
       </span>
       <span
         className="font-mono text-[14.5px] text-ink font-medium tracking-[-0.005em] px-1.5 py-[1px] rounded-md border border-transparent hover:border-line-2 focus:border-accent focus:bg-paper outline-none cursor-text"
-        contentEditable
+        contentEditable={edit.editable}
         suppressContentEditableWarning
+        onBlur={
+          edit.editable
+            ? (e) => edit.updateField(fieldPath, commitText(e.currentTarget.textContent ?? ""))
+            : undefined
+        }
       >
         {value}
       </span>

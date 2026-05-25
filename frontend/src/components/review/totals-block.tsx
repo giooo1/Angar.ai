@@ -11,6 +11,7 @@ import {
   type ConfidenceBucket,
 } from "@/lib/confidence";
 import type { Money } from "@/lib/canonical";
+import { commitText, useReviewEdit } from "./review-edit-context";
 import { SectionBlock } from "./section-block";
 
 type Props = {
@@ -88,6 +89,7 @@ function AmountRow({
   confidence?: number;
 }) {
   const [verified, setVerifiedState] = useState(false);
+  const edit = useReviewEdit();
   useEffect(() => {
     setVerifiedState(isVerified(extractionId, fieldPath));
   }, [extractionId, fieldPath]);
@@ -112,15 +114,45 @@ function AmountRow({
       <span className="text-[10px] text-ink-3 tracking-[0.07em] uppercase font-medium">
         {label}
       </span>
-      <span
-        className="text-ink font-medium text-right outline-none cursor-text"
-        contentEditable
-        suppressContentEditableWarning
-      >
-        <MoneyText money={money} />
+      <span className="text-ink font-medium text-right">
+        <EditableAmount money={money} fieldPath={fieldPath} edit={edit} />
       </span>
       <Chip bucket={b} score={confidence} onClick={onToggle} />
     </div>
+  );
+}
+
+/**
+ * The amount portion of a money cell, editable on its own; the currency code
+ * sits beside it as a static suffix so a blur capture reads just the number.
+ * A null money renders a non-editable "—".
+ */
+function EditableAmount({
+  money,
+  fieldPath,
+  edit,
+}: {
+  money: Money | null;
+  fieldPath: string;
+  edit: ReturnType<typeof useReviewEdit>;
+}) {
+  if (!money) return <span className="text-ink-4">—</span>;
+  return (
+    <>
+      <span
+        className="outline-none cursor-text rounded px-0.5 focus:bg-paper focus:shadow-[0_0_0_3px_var(--color-accent-soft)]"
+        contentEditable={edit.editable}
+        suppressContentEditableWarning
+        onBlur={
+          edit.editable
+            ? (e) => edit.updateField(fieldPath, commitText(e.currentTarget.textContent ?? ""))
+            : undefined
+        }
+      >
+        {money.amount}
+      </span>{" "}
+      <span className="text-ink-3">{money.currency}</span>
+    </>
   );
 }
 
@@ -150,6 +182,7 @@ function GrandRow({
   confidence?: number;
 }) {
   const [verified, setVerifiedState] = useState(false);
+  const edit = useReviewEdit();
   useEffect(() => {
     setVerifiedState(isVerified(extractionId, fieldPath));
   }, [extractionId, fieldPath]);
@@ -166,14 +199,21 @@ function GrandRow({
       <span className="font-mono text-[11px] text-ink font-semibold tracking-[0.06em] uppercase">
         Grand total
       </span>
-      <span
-        className="font-serif text-[22px] font-medium tracking-[-0.02em] text-ink text-right outline-none cursor-text"
-        contentEditable
-        suppressContentEditableWarning
-      >
+      <span className="font-serif text-[22px] font-medium tracking-[-0.02em] text-ink text-right">
         {money ? (
           <>
-            {money.amount}
+            <span
+              className="outline-none cursor-text rounded px-0.5 focus:bg-paper focus:shadow-[0_0_0_3px_var(--color-accent-soft)]"
+              contentEditable={edit.editable}
+              suppressContentEditableWarning
+              onBlur={
+                edit.editable
+                  ? (e) => edit.updateField(fieldPath, commitText(e.currentTarget.textContent ?? ""))
+                  : undefined
+              }
+            >
+              {money.amount}
+            </span>
             <span className="text-[12px] text-ink-3 font-mono font-normal ml-1.5">
               {money.currency}
             </span>

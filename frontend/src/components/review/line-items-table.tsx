@@ -1,14 +1,20 @@
+"use client";
+
 import type { LineItem } from "@/lib/canonical";
+import { commitText, useReviewEdit } from "./review-edit-context";
 import { SectionBlock } from "./section-block";
 
 type Props = { items: LineItem[] };
 
 /**
- * Line items rendered as a table. Cells are `contentEditable` per the
- * design — visual only; persistence comes when the corrections table
- * lands.
+ * Line items as a table. Each cell is `contentEditable`; on blur it pushes
+ * its text up through the edit context keyed by row index + field
+ * ("description", "quantity", "unit_price.amount", "total.amount"). Per-line
+ * confidence isn't shown for v1.
  */
 export function LineItemsTable({ items }: Props) {
+  const edit = useReviewEdit();
+
   return (
     <SectionBlock
       letter="L"
@@ -25,7 +31,7 @@ export function LineItemsTable({ items }: Props) {
           <tr>
             <Th>Description</Th>
             <Th right>Qty</Th>
-            <Th right>Unit</Th>
+            <Th right>Unit price</Th>
             <Th right>Amount</Th>
           </tr>
         </thead>
@@ -42,12 +48,23 @@ export function LineItemsTable({ items }: Props) {
           ) : (
             items.map((item, idx) => (
               <tr key={idx}>
-                <Td className="!font-serif !italic !text-ink !text-[13.5px] !font-normal">
+                <Td
+                  idx={idx}
+                  itemKey="description"
+                  edit={edit}
+                  className="!font-serif !italic !text-ink !text-[13.5px] !font-normal"
+                >
                   {item.description}
                 </Td>
-                <Td right>{item.quantity}</Td>
-                <Td right>{item.unit_price.amount}</Td>
-                <Td right>{item.total.amount}</Td>
+                <Td idx={idx} itemKey="quantity" edit={edit} right>
+                  {item.quantity}
+                </Td>
+                <Td idx={idx} itemKey="unit_price.amount" edit={edit} right>
+                  {item.unit_price.amount}
+                </Td>
+                <Td idx={idx} itemKey="total.amount" edit={edit} right>
+                  {item.total.amount}
+                </Td>
               </tr>
             ))
           )}
@@ -73,10 +90,16 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
 
 function Td({
   children,
+  idx,
+  itemKey,
+  edit,
   right,
   className,
 }: {
   children: React.ReactNode;
+  idx: number;
+  itemKey: string;
+  edit: ReturnType<typeof useReviewEdit>;
   right?: boolean;
   className?: string;
 }) {
@@ -87,8 +110,13 @@ function Td({
         (right ? "text-right font-medium text-ink " : "") +
         (className ?? "")
       }
-      contentEditable
+      contentEditable={edit.editable}
       suppressContentEditableWarning
+      onBlur={
+        edit.editable
+          ? (e) => edit.updateItem(idx, itemKey, commitText(e.currentTarget.textContent ?? ""))
+          : undefined
+      }
     >
       {children}
     </td>

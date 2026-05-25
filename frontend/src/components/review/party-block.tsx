@@ -68,6 +68,7 @@ export function PartyBlock({
         label="Party type"
         value={partyTypeLabel(party?.party_type)}
         confidence={confidence[`${side}.party_type`]}
+        editable={false}
       />
       <ConfidenceRow
         extractionId={extractionId}
