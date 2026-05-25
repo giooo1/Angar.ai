@@ -1,13 +1,25 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 
 import { ExtractionErrorCard } from "@/components/review/extraction-error-card";
 import { FileBar } from "@/components/review/file-bar";
-import { PdfPane } from "@/components/review/pdf-pane";
 import { ReviewBody } from "@/components/review/review-body";
 import { useExtraction } from "@/hooks/use-extraction";
-import { documentFileUrl } from "@/lib/api";
+
+// pdfjs touches DOM-only APIs; load the viewer client-side only.
+const PdfViewer = dynamic(
+  () => import("@/components/review/pdf-viewer").then((m) => m.PdfViewer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-paper-2 border border-line rounded-xl min-h-[480px] grid place-items-center text-[12.5px] text-ink-3 font-mono">
+        Loading viewer…
+      </div>
+    ),
+  },
+);
 
 /**
  * Review v2 — confidence-first.
@@ -68,8 +80,8 @@ export default function ReviewDetailPage() {
       <FileBar extraction={data} canonical={canonical} />
 
       <div className="grid grid-cols-[1fr_1fr] gap-4 items-start">
-        <PdfPane
-          url={documentFileUrl(data.document_id)}
+        <PdfViewer
+          documentId={data.document_id}
           filename={canonical?.extraction.source_filename ?? "document"}
         />
 
