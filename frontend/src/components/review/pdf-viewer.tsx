@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { Document, Page, Thumbnail, pdfjs } from "react-pdf";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -15,6 +15,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 0.25;
+const RAIL_W = 96; // thumbnail rail width
+const GAP = 12;
 
 type Props = {
   documentId: string;
@@ -26,6 +28,9 @@ type Props = {
   onToggleFullscreen?: () => void;
   /** Extra controls on the right of the bar (e.g. a close button in fullscreen). */
   trailing?: React.ReactNode;
+  /** When false, keyboard shortcuts are ignored (e.g. the split viewer while
+   *  the fullscreen overlay is open). Defaults to true. */
+  active?: boolean;
 };
 
 /**
@@ -37,18 +42,19 @@ type Props = {
  * Keyboard (ignored while a field is being edited): +/- zoom, ←/→ page,
  * r rotate, f fullscreen.
  */
-export function PdfViewer({ documentId, filename, fullscreen, onToggleFullscreen, trailing }: Props) {
+export function PdfViewer({ documentId, filename, fullscreen, onToggleFullscreen, trailing, active = true }: Props) {
   const { blobUrl, isImage, loading, error } = useDocumentFile(documentId);
 
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [zoom, setZoom] = useState(1); // 1 == fit-to-width
   const [rotation, setRotation] = useState(0);
+  const [railOpen, setRailOpen] = useState(false);
   const [areaWidth, setAreaWidth] = useState(0);
 
   const areaRef = useRef<HTMLDivElement>(null);
 
-  // Measure the usable content width so the page can fit-to-width.
+  // Measure the scroll container's content width so the page can fit-to-width.
   useEffect(() => {
     const el = areaRef.current;
     if (!el) return;
@@ -72,6 +78,7 @@ export function PdfViewer({ documentId, filename, fullscreen, onToggleFullscreen
   // doesn't trigger zoom/rotate.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!active) return;
       const el = document.activeElement as HTMLElement | null;
       if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName))) {
         return;
@@ -110,9 +117,11 @@ export function PdfViewer({ documentId, filename, fullscreen, onToggleFullscreen
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [numPages, zoomIn, zoomOut, prevPage, nextPage, rotate, onToggleFullscreen]);
+  }, [active, numPages, zoomIn, zoomOut, prevPage, nextPage, rotate, onToggleFullscreen]);
 
-  const pageWidth = areaWidth > 0 ? areaWidth * zoom : undefined;
+  const showRail = !isImage && multipage && railOpen;
+  const baseWidth = Math.max(0, areaWidth - (showRail ? RAIL_W + GAP : 0));
+  const pageWidth = baseWidth > 0 ? baseWidth * zoom : undefined;
 
   return (
     <div
@@ -127,6 +136,8 @@ export function PdfViewer({ documentId, filename, fullscreen, onToggleFullscreen
         page={pageNumber}
         numPages={numPages}
         multipage={multipage}
+        railOpen={railOpen}
+        onToggleRail={() => setRailOpen((v) => !v)}
         zoom={zoom}
         onPrev={prevPage}
         onNext={nextPage}
@@ -140,50 +151,69 @@ export function PdfViewer({ documentId, filename, fullscreen, onToggleFullscreen
       />
 
       <div
+        ref={areaRef}
         className="flex-1 overflow-auto p-4 [background:radial-gradient(circle_at_10%_10%,rgba(0,0,0,0.025),transparent_50%),radial-gradient(circle_at_90%_90%,rgba(0,0,0,0.02),transparent_50%),var(--color-paper-2)]"
       >
-        <div ref={areaRef} className="mx-auto" style={{ maxWidth: "100%" }}>
-          {error ? (
-            <Centered>Couldn&apos;t load the document. {error}</Centered>
-          ) : loading || !blobUrl ? (
-            <Centered>Loading document…</Centered>
-          ) : isImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
+        {error ? (
+          <Centered>Couldn&apos;t load the document. {error}</Centered>
+        ) : loading || !blobUrl ? (
+          <Centered>Loading document…</Centered>
+        ) : isImage ? (
+          <div className="mx-auto" style={{ width: pageWidth }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={blobUrl}
               alt={`Document preview: ${filename}`}
-              style={{
-                width: pageWidth,
-                transform: `rotate(${rotation}deg)`,
-                transition: "width 120ms ease",
-              }}
+              style={{ width: "100%", transform: `rotate(${rotation}deg)`, transition: "width 120ms ease" }}
               className="bg-paper rounded shadow-[0_30px_60px_-30px_rgba(20,15,5,0.22)] border border-line-2"
             />
-          ) : (
-            <Document
-              file={blobUrl}
-              onLoadSuccess={({ numPages: n }) => {
-                setNumPages(n);
-                setPageNumber((p) => Math.min(p, n));
-              }}
-              loading={<Centered>Loading document…</Centered>}
-              error={<Centered>Couldn&apos;t render this PDF.</Centered>}
-              noData={<Centered>No document.</Centered>}
-            >
+          </div>
+        ) : (
+          <Document
+            file={blobUrl}
+            onLoadSuccess={({ numPages: n }) => {
+              setNumPages(n);
+              setPageNumber((p) => Math.min(p, n));
+            }}
+            loading={<Centered>Loading document…</Centered>}
+            error={<Centered>Couldn&apos;t render this PDF.</Centered>}
+            noData={<Centered>No document.</Centered>}
+          >
+            <div className="flex items-start justify-center" style={{ gap: GAP }}>
+              {showRail && (
+                <div className="flex-none flex flex-col gap-2" style={{ width: RAIL_W }}>
+                  {Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setPageNumber(n)}
+                      className={cn(
+                        "rounded-md overflow-hidden border bg-paper cursor-pointer transition-colors",
+                        n === pageNumber ? "border-accent ring-2 ring-accent-soft" : "border-line-2 hover:border-ink-3",
+                      )}
+                      title={`Page ${n}`}
+                    >
+                      <Thumbnail pageNumber={n} width={RAIL_W - 8} />
+                    </button>
+                  ))}
+                </div>
+              )}
               {pageWidth ? (
-                <Page
-                  pageNumber={pageNumber}
-                  width={pageWidth}
-                  rotate={rotation}
-                  renderTextLayer
-                  renderAnnotationLayer
-                  className="!bg-paper rounded shadow-[0_30px_60px_-30px_rgba(20,15,5,0.22),0_8px_20px_-10px_rgba(20,15,5,0.08)] overflow-hidden [&_canvas]:!rounded"
-                  loading={<Centered>Rendering…</Centered>}
-                />
+                <div style={{ width: pageWidth }}>
+                  <Page
+                    pageNumber={pageNumber}
+                    width={pageWidth}
+                    rotate={rotation}
+                    renderTextLayer
+                    renderAnnotationLayer
+                    className="!bg-paper rounded shadow-[0_30px_60px_-30px_rgba(20,15,5,0.22),0_8px_20px_-10px_rgba(20,15,5,0.08)] overflow-hidden [&_canvas]:!rounded"
+                    loading={<Centered>Rendering…</Centered>}
+                  />
+                </div>
               ) : null}
-            </Document>
-          )}
-        </div>
+            </div>
+          </Document>
+        )}
       </div>
     </div>
   );
@@ -201,6 +231,8 @@ type ControlBarProps = {
   page: number;
   numPages: number;
   multipage: boolean;
+  railOpen: boolean;
+  onToggleRail: () => void;
   zoom: number;
   onPrev: () => void;
   onNext: () => void;
@@ -217,6 +249,8 @@ function ControlBar({
   page,
   numPages,
   multipage,
+  railOpen,
+  onToggleRail,
   zoom,
   onPrev,
   onNext,
@@ -232,17 +266,24 @@ function ControlBar({
     <div className="flex items-center justify-between gap-2.5 px-3 py-2 border-b border-line-2 bg-paper">
       <div className="flex items-center gap-1.5">
         {multipage && (
-          <div className="flex items-center gap-0.5">
-            <IconBtn label="Previous page" onClick={onPrev} disabled={page <= 1}>
-              <path d="M15 18l-6-6 6-6" />
+          <>
+            <IconBtn label={railOpen ? "Hide thumbnails" : "Show thumbnails"} onClick={onToggleRail} outlined={railOpen}>
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <path d="M14 5h7M14 9h7M14 16h7M14 20h7" />
             </IconBtn>
-            <span className="px-1.5 font-mono text-[11px] text-ink tabular-nums">
-              {page} / {numPages}
-            </span>
-            <IconBtn label="Next page" onClick={onNext} disabled={page >= numPages}>
-              <path d="M9 18l6-6-6-6" />
-            </IconBtn>
-          </div>
+            <div className="flex items-center gap-0.5">
+              <IconBtn label="Previous page" onClick={onPrev} disabled={page <= 1}>
+                <path d="M15 18l-6-6 6-6" />
+              </IconBtn>
+              <span className="px-1.5 font-mono text-[11px] text-ink tabular-nums">
+                {page} / {numPages}
+              </span>
+              <IconBtn label="Next page" onClick={onNext} disabled={page >= numPages}>
+                <path d="M9 18l6-6-6-6" />
+              </IconBtn>
+            </div>
+          </>
         )}
       </div>
 
