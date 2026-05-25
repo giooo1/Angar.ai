@@ -235,4 +235,9 @@ class Extraction(Base):
     # model's own is-this-an-invoice judgment). Null until approved.
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # Reviewer corrections to the extracted data. Null until the user saves
+    # an edit. `canonical_data` always preserves the model's raw output (eval
+    # signal); export and the review screen read `corrected_data or canonical_data`.
+    corrected_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+
     document: Mapped["Document"] = relationship(back_populates="extractions")

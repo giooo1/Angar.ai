@@ -245,6 +245,48 @@ class TestExportJson:
         assert GEO_DESC in body  # not \uXXXX-escaped
 
 
+class TestCorrections:
+    def test_save_persists_without_touching_canonical(self, client, db_session, test_org, test_user) -> None:
+        original = _canonical_with_items()
+        ex = _make_extraction(db_session, test_org, test_user, original)
+        edited = _canonical_with_items()
+        edited["items"][0]["description"] = "CORRECTED LINE"
+        r = client.put(f"/api/v1/extractions/{ex.id}/corrections", json=edited)
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["corrected_data"]["items"][0]["description"] == "CORRECTED LINE"
+        # Model's raw output is preserved.
+        assert body["canonical_data"]["items"][0]["description"] == GEO_DESC
+
+    def test_get_reflects_corrections(self, client, db_session, test_org, test_user) -> None:
+        ex = _make_extraction(db_session, test_org, test_user, _canonical_with_items())
+        edited = _canonical_with_items()
+        edited["document_number"] = "EDITED-99"
+        client.put(f"/api/v1/extractions/{ex.id}/corrections", json=edited)
+        got = client.get(f"/api/v1/extractions/{ex.id}").json()
+        assert got["corrected_data"]["document_number"] == "EDITED-99"
+        assert got["canonical_data"]["document_number"] == "INV-2026-01482"
+
+    def test_export_uses_corrections(self, client, db_session, test_org, test_user) -> None:
+        ex = _make_extraction(db_session, test_org, test_user, _canonical_with_items())
+        edited = _canonical_with_items()
+        edited["items"][0]["description"] = "ედიტ აღწერა"
+        client.put(f"/api/v1/extractions/{ex.id}/corrections", json=edited)
+        body = client.get(f"/api/v1/extractions/{ex.id}/export?format=csv").content.decode("utf-8")
+        assert "ედიტ აღწერა" in body
+        assert GEO_DESC not in body  # original line no longer in the export
+
+    def test_invalid_body_is_422(self, client, db_session, test_org, test_user) -> None:
+        ex = _make_extraction(db_session, test_org, test_user, _canonical_with_items())
+        r = client.put(f"/api/v1/extractions/{ex.id}/corrections", json={"foo": "bar"})
+        assert r.status_code == 422
+
+    def test_corrections_other_org_is_404(self, client, db_session, other_org, test_user) -> None:
+        ex = _make_extraction(db_session, other_org, test_user, _canonical_with_items())
+        r = client.put(f"/api/v1/extractions/{ex.id}/corrections", json=_canonical_with_items())
+        assert r.status_code == 404
+
+
 class TestExportErrors:
     def test_unknown_format_is_422(self, client, db_session, test_org, test_user) -> None:
         # FastAPI rejects a Literal query value it doesn't recognize with 422.

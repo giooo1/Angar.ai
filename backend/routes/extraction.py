@@ -19,6 +19,7 @@ from backend.models import _utcnow
 from backend.rate_limit import limiter
 
 from angar_extraction.extractor import Extractor
+from angar_schema.canonical import CanonicalInvoice
 from backend.api_schemas import (
     ApiError,
     ErrorResponse,
@@ -75,6 +76,7 @@ def _status_response(doc: Document, extraction: Extraction) -> ExtractionStatusR
         prompt_version=extraction.prompt_version,
         model_version=extraction.model_version,
         canonical_data=extraction.canonical_data,
+        corrected_data=extraction.corrected_data,
         warnings=extraction.warnings or [],
         error_code=extraction.error_code,
         error_message=extraction.error_message,
@@ -252,6 +254,34 @@ def approve_extraction(
 
 
 # ---------------------------------------------------------------------------
+# PUT /extractions/{id}/corrections — save reviewer edits
+# ---------------------------------------------------------------------------
+
+@router.put(
+    "/extractions/{extraction_id}/corrections",
+    response_model=ExtractionStatusResponse,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+)
+def save_corrections(
+    corrected: CanonicalInvoice,
+    extraction_id: str = Path(...),
+    db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_org),
+) -> ExtractionStatusResponse:
+    """Persist reviewer edits without touching the model's raw `canonical_data`.
+
+    The body is validated against the canonical schema (FastAPI returns 422 on
+    a malformed edit, e.g. a non-numeric amount), then stored normalized in
+    `corrected_data`. Export and the review screen read corrected over raw.
+    """
+    extraction = _load_extraction_or_404(extraction_id, db, current_org)
+    extraction.corrected_data = corrected.model_dump(mode="json")
+    db.commit()
+    db.refresh(extraction)
+    return _status_response(extraction.document, extraction)
+
+
+# ---------------------------------------------------------------------------
 # GET /extractions/{id}/export — download as CSV / XLSX / JSON
 # ---------------------------------------------------------------------------
 
@@ -270,7 +300,7 @@ def _safe_filename_base(extraction: Extraction) -> str:
     """ASCII-safe filename stem from the document number, falling back to the
     uploaded filename stem. Non-ASCII stripped so the `filename=` header is
     valid (Mkhedruli document numbers survive inside the file, not the name)."""
-    canonical = extraction.canonical_data or {}
+    canonical = extraction.corrected_data or extraction.canonical_data or {}
     raw = canonical.get("document_number") or extraction.document.original_filename or "export"
     raw = raw.rsplit(".", 1)[0]  # drop any extension on the fallback filename
     cleaned = "".join(c if (c.isascii() and (c.isalnum() or c in "-_")) else "_" for c in raw)
@@ -294,7 +324,8 @@ def export_extraction(
     """
     extraction = _load_extraction_or_404(extraction_id, db, current_org)
 
-    canonical = extraction.canonical_data
+    # Prefer reviewer corrections; fall back to the model's raw output.
+    canonical = extraction.corrected_data or extraction.canonical_data
     if not canonical:
         # Exists, but never produced data (e.g. a failed extraction) — nothing
         # to export. 409: conflicts with the resource's current state.

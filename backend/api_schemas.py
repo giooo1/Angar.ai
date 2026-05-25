@@ -34,6 +34,7 @@ class ExtractionStatusResponse(BaseModel):
     prompt_version: str
     model_version: str
     canonical_data: dict[str, Any] | None = None
+    corrected_data: dict[str, Any] | None = None
     warnings: list[str] = Field(default_factory=list)
     error_code: str | None = None
     error_message: str | None = None

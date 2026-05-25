@@ -56,13 +56,18 @@ def init_db() -> None:
     from backend import models  # noqa: F401
     Base.metadata.create_all(bind=_engine)
 
-    # Lightweight column add — create_all never ALTERs existing tables, and
+    # Lightweight column adds — create_all never ALTERs existing tables, and
     # there's no migration framework yet. SQLite-safe; remove when Alembic lands.
     from sqlalchemy import inspect, text
     cols = {c["name"] for c in inspect(_engine).get_columns("extractions")}
-    if "approved_at" not in cols:
-        with _engine.begin() as conn:
-            conn.execute(text("ALTER TABLE extractions ADD COLUMN approved_at DATETIME"))
+    _added = [
+        ("approved_at", "DATETIME"),
+        ("corrected_data", "JSON"),
+    ]
+    with _engine.begin() as conn:
+        for name, sqltype in _added:
+            if name not in cols:
+                conn.execute(text(f"ALTER TABLE extractions ADD COLUMN {name} {sqltype}"))
 
 
 def get_db() -> Iterator[Session]:
