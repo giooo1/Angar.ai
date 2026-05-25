@@ -2,31 +2,29 @@
 
 import type { LineItem } from "@/lib/canonical";
 import { commitText, useReviewEdit } from "./review-edit-context";
-import { SectionBlock } from "./section-block";
+import { SectionHeader } from "./section-header";
 
 type Props = { items: LineItem[] };
 
 /**
- * Line items as a table. Each cell is `contentEditable`; on blur it pushes
- * its text up through the edit context keyed by row index + field
- * ("description", "quantity", "unit_price.amount", "total.amount"). Per-line
- * confidence isn't shown for v1.
+ * Line items as a flat table. Each cell is `contentEditable`; on blur it
+ * pushes its text up through the edit context keyed by row index + field
+ * ("description", "quantity", "unit_price.amount", "total.amount").
  */
 export function LineItemsTable({ items }: Props) {
   const edit = useReviewEdit();
 
   return (
-    <SectionBlock
-      letter="L"
-      title="Line items"
-      right={
-        <span className="font-mono text-[10.5px] text-ink-3 tracking-[0.04em]">
-          {items.length} {items.length === 1 ? "line" : "lines"}
-        </span>
-      }
-      bodyClassName="p-0"
-    >
-      <table className="w-full border-collapse font-mono">
+    <section>
+      <SectionHeader
+        label="Line items"
+        right={
+          <span className="text-[10.5px] text-ink-3 tracking-[0.04em]">
+            {items.length} {items.length === 1 ? "line" : "lines"}
+          </span>
+        }
+      />
+      <table className="w-full border-collapse">
         <thead>
           <tr>
             <Th>Description</Th>
@@ -70,7 +68,7 @@ export function LineItemsTable({ items }: Props) {
           )}
         </tbody>
       </table>
-    </SectionBlock>
+    </section>
   );
 }
 

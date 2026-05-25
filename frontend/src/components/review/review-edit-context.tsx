@@ -41,7 +41,7 @@ export function useReviewEdit(): ReviewEditContextValue {
  */
 export function commitText(raw: string): string | null {
   const t = raw.replace(/ /g, " ").trim();
-  return t === "" || t === "—" ? null : t;
+  return t === "" || t === "—" || t === "Missing" ? null : t;
 }
 
 /** Mutate `obj` so that the dotted `path` holds `value`, creating intermediate

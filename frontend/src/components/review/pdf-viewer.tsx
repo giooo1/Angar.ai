@@ -128,8 +128,8 @@ export function PdfViewer({ documentId, filename, fullscreen, onToggleFullscreen
       className={cn(
         "flex flex-col overflow-hidden",
         fullscreen
-          ? "h-full bg-paper-2"
-          : "bg-paper-2 border border-line rounded-xl sticky top-6 max-h-[calc(100vh-48px)]",
+          ? "h-full bg-bg-2"
+          : "bg-bg-2 border border-line rounded-xl sticky top-6 max-h-[calc(100vh-48px)]",
       )}
     >
       <ControlBar
@@ -152,7 +152,7 @@ export function PdfViewer({ documentId, filename, fullscreen, onToggleFullscreen
 
       <div
         ref={areaRef}
-        className="flex-1 overflow-auto p-4 [background:radial-gradient(circle_at_10%_10%,rgba(0,0,0,0.025),transparent_50%),radial-gradient(circle_at_90%_90%,rgba(0,0,0,0.02),transparent_50%),var(--color-paper-2)]"
+        className="flex-1 overflow-auto p-4 [background:radial-gradient(circle_at_10%_10%,rgba(0,0,0,0.03),transparent_50%),radial-gradient(circle_at_90%_90%,rgba(0,0,0,0.025),transparent_50%),var(--color-bg-2)]"
       >
         {error ? (
           <Centered>Couldn&apos;t load the document. {error}</Centered>
