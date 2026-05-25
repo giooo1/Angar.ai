@@ -24,13 +24,13 @@ export function NotesPanel({
   if (!hasContent) return null;
 
   return (
-    <section>
-      <details open>
-        <summary className="cursor-pointer outline-none list-none text-[11px] text-ink-3 tracking-[0.08em] uppercase font-medium inline-flex items-center gap-1.5">
+    <div className="bg-paper border border-line rounded-xl overflow-hidden">
+      <details className="p-4" open>
+        <summary className="cursor-pointer outline-none list-none font-mono text-[10.5px] text-ink-3 tracking-[0.08em] uppercase font-medium inline-flex items-center gap-1.5">
           <span className="inline-block transition-transform">▸</span>
           Extraction notes
         </summary>
-        <div className="mt-2.5 flex flex-col gap-3 text-[13px] text-ink-2 leading-[1.65]">
+        <div className="mt-3 flex flex-col gap-3 text-[13px] text-ink-2 leading-[1.65]">
           {rejectionReason && (
             <NoteBlock label="Rejection reason">{rejectionReason}</NoteBlock>
           )}
@@ -61,7 +61,7 @@ export function NotesPanel({
           )}
         </div>
       </details>
-    </section>
+    </div>
   );
 }
 

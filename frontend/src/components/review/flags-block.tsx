@@ -1,6 +1,6 @@
 import { Chip } from "@/components/ui/chip";
 import type { CanonicalInvoice } from "@/lib/canonical";
-import { SectionHeader } from "./section-header";
+import { SectionBlock } from "./section-block";
 
 type Props = {
   canonical: Pick<
@@ -30,22 +30,22 @@ export function FlagsBlock({ canonical }: Props) {
   flags.push({ label: canonical.document_type.replace(/_/g, " "), variant: "default" });
 
   return (
-    <section>
-      <SectionHeader
-        label="Flags"
-        right={
-          <span className="text-[10.5px] text-ink-3 tracking-[0.04em]">
-            {flags.length} detected
-          </span>
-        }
-      />
-      <div className="flex flex-wrap gap-2">
+    <SectionBlock
+      letter="!"
+      title="Flags"
+      right={
+        <span className="font-mono text-[10.5px] text-ink-3 tracking-[0.04em]">
+          {flags.length} detected
+        </span>
+      }
+    >
+      <div className="px-4 py-3.5 flex flex-wrap gap-2">
         {flags.map((f, i) => (
           <Chip key={i} variant={f.variant ?? "default"}>
             {f.label}
           </Chip>
         ))}
       </div>
-    </section>
+    </SectionBlock>
   );
 }
