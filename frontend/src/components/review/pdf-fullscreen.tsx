@@ -26,8 +26,8 @@ type Props = {
 
 /**
  * Fullscreen document overlay (portaled to <body>). The PDF fills the viewport
- * with the same minimal control bar; a collapsed-by-default drawer slides in
- * from the right with the full, editable data pane. Because this renders inside
+ * with the same minimal control bar; a drawer (open by default, collapsible)
+ * holds the full, editable data pane on the right. Because this renders inside
  * the workspace's ReviewEditProvider, the drawer edits the same draft — a fix
  * made while zoomed persists and flows into Save/Export. Esc closes.
  */
@@ -43,7 +43,7 @@ export function PdfFullscreen({
   dirty,
   onSave,
 }: Props) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(true);
 
   // Esc to close + lock background scroll while open.
   useEffect(() => {
