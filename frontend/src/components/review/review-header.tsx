@@ -107,8 +107,19 @@ export function ReviewHeader({
   };
 
   return (
-    <header className="sticky top-4 z-20 flex items-center justify-end gap-2 px-3.5 py-2.5 rounded-xl border border-line bg-paper/95 backdrop-blur-sm shadow-[0_8px_24px_-18px_rgba(20,15,5,0.25)]">
-      {err && <span className="text-[12.5px] text-[#b8342f] mr-auto">{err}</span>}
+    <header className="sticky top-4 z-20 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-line bg-paper/95 backdrop-blur-sm shadow-[0_8px_24px_-18px_rgba(20,15,5,0.25)]">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span
+          className={cn(
+            "w-[26px] h-[26px] rounded-full bg-paper border-[1.5px] grid place-items-center flex-none font-bold text-[13px]",
+            accepted ? "border-accent text-accent" : "border-error text-error",
+          )}
+          title={accepted ? "Document accepted" : "Document rejected"}
+        >
+          {accepted ? "✓" : "!"}
+        </span>
+        {err && <span className="text-[12.5px] text-[#b8342f]">{err}</span>}
+      </div>
 
       <div className="flex items-center gap-2">
         <button
