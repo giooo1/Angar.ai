@@ -15,7 +15,7 @@ type Props = {
 };
 
 const HEADER_GRID =
-  "grid grid-cols-[28px_40px_1fr_120px_120px_200px_130px_110px_auto] gap-3 items-center px-4 py-3";
+  "grid grid-cols-[44px_40px_1fr_120px_120px_200px_130px_110px_auto] gap-3 items-center px-4 py-3";
 
 export function DocumentsTable({ items }: Props) {
   const router = useRouter();

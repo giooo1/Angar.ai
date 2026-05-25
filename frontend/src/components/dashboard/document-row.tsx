@@ -32,24 +32,29 @@ export function DocumentRow({ item, selected, onToggle }: Props) {
     <Link
       href={`/review/${item.extraction_id}`}
       className={cn(
-        "grid grid-cols-[28px_40px_1fr_120px_120px_200px_130px_110px_auto] gap-3 items-center px-4 py-3",
+        "grid grid-cols-[44px_40px_1fr_120px_120px_200px_130px_110px_auto] gap-3 items-center px-4 py-3",
         "border-b border-line-2 last:border-b-0 transition-colors no-underline text-ink",
         selected ? "bg-accent-soft/40" : "hover:bg-paper-2",
       )}
     >
-      <input
-        type="checkbox"
-        checked={selected}
-        // Toggle selection without following the row link.
+      {/* Full-cell hit area so a near-miss toggles instead of navigating. */}
+      <label
+        className="flex items-center justify-center h-full -my-3 py-3 cursor-pointer"
+        aria-label="Select document"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           onToggle();
         }}
-        onChange={() => {}}
-        aria-label="Select document"
-        className="w-3.5 h-3.5 cursor-pointer accent-[var(--color-accent-2)]"
-      />
+      >
+        <input
+          type="checkbox"
+          checked={selected}
+          readOnly
+          tabIndex={-1}
+          className="w-4 h-4 pointer-events-none accent-[var(--color-accent-2)]"
+        />
+      </label>
       <span className="doc-thumb" style={{ width: 28, height: 36 }} />
       <div className="min-w-0">
         <div className="text-[13.5px] font-medium tracking-[-0.005em] overflow-hidden text-ellipsis whitespace-nowrap">
