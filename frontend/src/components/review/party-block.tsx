@@ -14,13 +14,6 @@ type Props = {
   extractionId: string;
 };
 
-const SCRIPT_LABEL: Record<string, string> = {
-  mkhedruli: "Mkhedruli",
-  latin: "Latin",
-  mixed: "Latin + Mkhedruli",
-  unknown: "Mixed",
-};
-
 /**
  * Reusable card for Seller and Buyer. Reads the `Party` and renders
  * Name, Name (en) (if present), TIN, Party type, Address (full-width).
@@ -34,15 +27,8 @@ export function PartyBlock({
   confidence,
   extractionId,
 }: Props) {
-  const scriptLabel =
-    party?.script ? SCRIPT_LABEL[party.script] ?? "Mixed" : "Mixed";
-
   return (
-    <SectionBlock
-      letter={letter}
-      title={title}
-      right={<ScriptChip label={scriptLabel} />}
-    >
+    <SectionBlock letter={letter} title={title}>
       <ConfidenceRow
         extractionId={extractionId}
         fieldPath={`${side}.name`}
@@ -79,17 +65,6 @@ export function PartyBlock({
         full
       />
     </SectionBlock>
-  );
-}
-
-function ScriptChip({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-paper-2 border border-line-2 font-mono text-[9.5px] text-ink-3 tracking-[0.06em] uppercase">
-      <span className="font-serif italic text-accent text-[11px] leading-none">
-        ა
-      </span>
-      {label}
-    </span>
   );
 }
 
