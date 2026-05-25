@@ -104,7 +104,7 @@ function AmountRow({
   return (
     <div
       className={cn(
-        "grid grid-cols-[1fr_auto_auto] items-center gap-3.5 px-4 py-2 font-mono text-[12px]",
+        "grid grid-cols-[1fr_auto_auto] items-center gap-3.5 px-3.5 py-1.5 font-mono text-[12px]",
         b === "med" &&
           "bg-gradient-to-r from-warn-soft to-transparent border-l-[3px] border-warn pl-[15px]",
         b === "low" &&
@@ -158,7 +158,7 @@ function EditableAmount({
 
 function MutedRow({ label, money }: { label: string; money: Money | null }) {
   return (
-    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3.5 px-4 py-2 font-mono text-[12px] text-ink-4">
+    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3.5 px-3.5 py-1.5 font-mono text-[12px] text-ink-4">
       <span className="text-[10px] text-ink-3 tracking-[0.07em] uppercase font-medium">
         {label}
       </span>
@@ -195,7 +195,7 @@ function GrandRow({
   };
 
   return (
-    <div className="mt-1.5 grid grid-cols-[1fr_auto_auto] items-center gap-3.5 px-4 py-3.5 border-t border-line-2 bg-paper-2">
+    <div className="mt-1 grid grid-cols-[1fr_auto_auto] items-center gap-3.5 px-3.5 py-2.5 border-t border-line-2 bg-paper-2">
       <span className="font-mono text-[11px] text-ink font-semibold tracking-[0.06em] uppercase">
         Grand total
       </span>

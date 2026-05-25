@@ -20,7 +20,7 @@ export function SectionBlock({
 }) {
   return (
     <div className="bg-paper border border-line rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between gap-2.5 px-4 py-2.5 border-b border-line-2">
+      <div className="flex items-center justify-between gap-2.5 px-3.5 py-2 border-b border-line-2">
         <span className="inline-flex items-center gap-2 font-mono text-[10.5px] text-ink-2 tracking-[0.08em] uppercase font-medium">
           <span className="w-[18px] h-[18px] rounded-[5px] bg-accent-soft text-accent grid place-items-center font-sans text-[10px] font-semibold">
             {letter}

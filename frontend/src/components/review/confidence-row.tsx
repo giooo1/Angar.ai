@@ -77,12 +77,12 @@ export function ConfidenceRow({
       className={cn(
         "relative grid items-center gap-3 border-b border-line-2 last:border-b-0 transition-colors",
         full ? "grid-cols-[120px_1fr]" : "grid-cols-[120px_1fr_100px]",
-        "py-2.5",
+        "py-2",
         effectiveBucket === "med" &&
           "bg-gradient-to-r from-warn-soft via-warn-soft/40 to-transparent",
         effectiveBucket === "low" &&
           "bg-gradient-to-r from-error-soft via-error-soft/55 to-transparent",
-        effectiveBucket === "med" || effectiveBucket === "low" ? "pl-[30px] pr-4" : "px-4",
+        effectiveBucket === "med" || effectiveBucket === "low" ? "pl-[30px] pr-3.5" : "px-3.5",
       )}
     >
       {(effectiveBucket === "med" || effectiveBucket === "low") && (

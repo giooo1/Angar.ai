@@ -93,7 +93,7 @@ function Cell({
   return (
     <div
       className={cn(
-        "relative px-4 py-3.5 flex flex-col gap-1.5",
+        "relative px-3.5 py-2.5 flex flex-col gap-1",
         b === "med" && "bg-gradient-to-b from-warn-soft to-transparent",
         b === "low" && "bg-gradient-to-b from-error-soft to-transparent",
       )}

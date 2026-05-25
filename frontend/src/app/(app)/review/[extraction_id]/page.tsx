@@ -1,37 +1,19 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 
-import { ExtractionErrorCard } from "@/components/review/extraction-error-card";
 import { FileBar } from "@/components/review/file-bar";
-import { ReviewBody } from "@/components/review/review-body";
+import { ReviewWorkspace } from "@/components/review/review-workspace";
 import { useExtraction } from "@/hooks/use-extraction";
 
-// pdfjs touches DOM-only APIs; load the viewer client-side only.
-const PdfViewer = dynamic(
-  () => import("@/components/review/pdf-viewer").then((m) => m.PdfViewer),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="bg-paper-2 border border-line rounded-xl min-h-[480px] grid place-items-center text-[12.5px] text-ink-3 font-mono">
-        Loading viewer…
-      </div>
-    ),
-  },
-);
-
 /**
- * Review v2 — confidence-first.
+ * Review screen — document-first.
  *
- * Left: sticky PDF pane with a zoom toolbar (buttons visual-only for v1).
- * Right: the editable <ReviewBody> — acceptance banner → risk strip →
- *        Document / Seller / Buyer / Line items / Totals / Flags / Notes
- *        → sticky action bar with Save / Approve / Export.
- *
- * The screen shows `corrected_data` when the user has saved edits, else the
- * model's raw `canonical_data`. Failed extractions render
- * `<ExtractionErrorCard>` instead of the body.
+ * A top file bar over the <ReviewWorkspace>, which owns the responsive
+ * document/data layout, the react-pdf viewer, the editable data pane with its
+ * sticky action header, and the edit draft. The screen prefers
+ * `corrected_data` (reviewer edits) over the model's raw `canonical_data`;
+ * failed extractions render an error card in the data slot.
  */
 export default function ReviewDetailPage() {
   const params = useParams<{ extraction_id: string }>();
@@ -72,28 +54,12 @@ export default function ReviewDetailPage() {
     );
   }
 
-  // Show reviewer corrections when present, else the model's raw output.
   const canonical = data.corrected_data ?? data.canonical_data;
 
   return (
     <main className="px-8 py-6 pb-2 w-full max-w-[1480px]">
       <FileBar extraction={data} canonical={canonical} />
-
-      <div className="grid grid-cols-[1fr_1fr] gap-4 items-start">
-        <PdfViewer
-          documentId={data.document_id}
-          filename={canonical?.extraction.source_filename ?? "document"}
-        />
-
-        {canonical ? (
-          <ReviewBody data={data} canonical={canonical} />
-        ) : (
-          <ExtractionErrorCard
-            errorCode={data.error_code}
-            errorMessage={data.error_message}
-          />
-        )}
-      </div>
+      <ReviewWorkspace data={data} />
     </main>
   );
 }
