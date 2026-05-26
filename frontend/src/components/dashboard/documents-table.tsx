@@ -14,8 +14,9 @@ type Props = {
   items: ExtractionStatusResponse[];
 };
 
+// Header and rows share this exact template so columns line up.
 const HEADER_GRID =
-  "grid grid-cols-[44px_40px_1fr_120px_120px_200px_130px_110px_auto] gap-3 items-center px-4 py-3";
+  "grid grid-cols-[44px_40px_1fr_150px_120px_190px_130px_110px_28px] gap-3 items-center px-4 py-3";
 
 export function DocumentsTable({ items }: Props) {
   const router = useRouter();
@@ -154,9 +155,9 @@ export function DocumentsTable({ items }: Props) {
           <span>Type</span>
           <span>Date</span>
           <span>Seller</span>
-          <span>Grand total</span>
+          <span className="text-right">Grand total</span>
           <span>Status</span>
-          <span className="text-right">Action</span>
+          <span />
         </div>
       )}
       {items.map((item) => (

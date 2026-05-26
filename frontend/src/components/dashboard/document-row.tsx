@@ -32,7 +32,7 @@ export function DocumentRow({ item, selected, onToggle }: Props) {
     <Link
       href={`/review/${item.extraction_id}`}
       className={cn(
-        "grid grid-cols-[44px_40px_1fr_120px_120px_200px_130px_110px_auto] gap-3 items-center px-4 py-3",
+        "grid grid-cols-[44px_40px_1fr_150px_120px_190px_130px_110px_28px] gap-3 items-center px-4 py-3",
         "border-b border-line-2 last:border-b-0 transition-colors no-underline text-ink",
         selected ? "bg-accent-soft/40" : "hover:bg-paper-2",
       )}
@@ -79,11 +79,24 @@ export function DocumentRow({ item, selected, onToggle }: Props) {
       >
         {sellerName}
       </div>
-      <div className="font-mono text-[12.5px] text-ink-2">
+      <div className="font-mono text-[12.5px] text-ink-2 text-right">
         {grandTotal ? `${grandTotal.amount} ${grandTotal.currency}` : "—"}
       </div>
       <StatusChip status={item.status} />
-      <span className="justify-self-end text-[13px] font-medium text-accent">Open</span>
+      <svg
+        className="justify-self-end text-ink-3"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-label="Open"
+      >
+        <path d="M9 6l6 6-6 6" />
+      </svg>
     </Link>
   );
 }
