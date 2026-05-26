@@ -22,6 +22,7 @@ from backend.rate_limit import limiter
 
 from backend.api_schemas import (
     ApiError,
+    ChangePasswordRequest,
     ErrorResponse,
     LoginRequest,
     OrganizationDTO,
@@ -29,6 +30,7 @@ from backend.api_schemas import (
     RequestPasswordResetRequest,
     ResetPasswordRequest,
     SessionResponse,
+    UpdateProfileRequest,
     UserDTO,
     VerifyEmailRequest,
 )
@@ -396,6 +398,69 @@ def me(
     current_org: Organization = Depends(get_current_org),
 ) -> SessionResponse:
     return _session_response(current_user, current_org)
+
+
+@router.patch(
+    "/me",
+    response_model=SessionResponse,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
+)
+def update_me(
+    body: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_org),
+    db: Session = Depends(get_db),
+) -> SessionResponse:
+    """Update the signed-in user's profile. Only provided fields change."""
+    if body.full_name is not None:
+        current_user.full_name = body.full_name.strip() or None
+    if body.locale is not None:
+        if body.locale not in ("en", "ka"):
+            raise HTTPException(
+                status_code=400,
+                detail=_bilingual(
+                    "INVALID_LOCALE",
+                    "Language must be 'en' or 'ka'.",
+                    "ენა უნდა იყოს 'en' ან 'ka'.",
+                ).model_dump(),
+            )
+        current_user.locale = body.locale
+    db.commit()
+    db.refresh(current_user)
+    return _session_response(current_user, current_org)
+
+
+@router.post(
+    "/auth/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
+    },
+)
+@limiter.limit("5/hour")
+def change_password(
+    request: Request,
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Change password while signed in (current + new). Works without email."""
+    if not verify_password(body.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=400,
+            detail=_bilingual(
+                "WRONG_PASSWORD",
+                "Current password is incorrect.",
+                "მიმდინარე პაროლი არასწორია.",
+            ).model_dump(),
+        )
+    _validate_password(body.new_password)
+    current_user.password_hash = hash_password(body.new_password)
+    current_user.last_login_at = datetime.now(tz=timezone.utc)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ---------------------------------------------------------------------------

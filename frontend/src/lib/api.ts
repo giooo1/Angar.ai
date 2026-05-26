@@ -83,6 +83,34 @@ export async function logout(): Promise<void> {
   if (!res.ok) await unwrapError(res);
 }
 
+/** Update the signed-in user's profile (name and/or interface language). */
+export async function updateProfile(
+  patch: { full_name?: string | null; locale?: string },
+): Promise<SessionResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/me`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(patch),
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+  return (await res.json()) as SessionResponse;
+}
+
+/** Change password while signed in (current + new). */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/change-password`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    credentials: "include",
+  });
+  if (!res.ok) await unwrapError(res);
+}
+
 export async function me(signal?: AbortSignal): Promise<MeResponse> {
   const res = await fetch(`${API_BASE}/api/v1/me`, {
     signal,

@@ -236,3 +236,76 @@ class TestExtractionGating:
         r = auth_client.get("/api/v1/extractions")
         assert r.status_code == 200
         assert r.json()["items"] == []  # fresh org, no uploads
+
+
+class TestUpdateProfile:
+    def test_updates_name_and_locale(self, auth_client: TestClient) -> None:
+        _register(auth_client)
+        r = auth_client.patch("/api/v1/me", json={"full_name": "Alice Smith", "locale": "ka"})
+        assert r.status_code == 200, r.text
+        user = r.json()["user"]
+        assert user["full_name"] == "Alice Smith"
+        assert user["locale"] == "ka"
+        # Persisted: a fresh /me reflects it.
+        assert auth_client.get("/api/v1/me").json()["user"]["locale"] == "ka"
+
+    def test_partial_update_leaves_other_fields(self, auth_client: TestClient) -> None:
+        _register(auth_client)
+        auth_client.patch("/api/v1/me", json={"locale": "ka"})
+        r = auth_client.patch("/api/v1/me", json={"full_name": "Just Name"})
+        user = r.json()["user"]
+        assert user["full_name"] == "Just Name"
+        assert user["locale"] == "ka"  # untouched
+
+    def test_invalid_locale_returns_400(self, auth_client: TestClient) -> None:
+        _register(auth_client)
+        r = auth_client.patch("/api/v1/me", json={"locale": "fr"})
+        assert r.status_code == 400
+        assert r.json()["detail"]["error"]["code"] == "INVALID_LOCALE"
+
+    def test_requires_auth(self, auth_client: TestClient) -> None:
+        r = auth_client.patch("/api/v1/me", json={"full_name": "x"})
+        assert r.status_code == 401
+
+
+class TestChangePassword:
+    def _login(self, client: TestClient, password: str):
+        return client.post(
+            "/api/v1/auth/login",
+            json={"email": "alice@example.com", "password": password},
+        )
+
+    def test_change_then_old_fails_new_works(self, auth_client: TestClient) -> None:
+        _register(auth_client)
+        r = auth_client.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "hunter2pw", "new_password": "brandnewpw9"},
+        )
+        assert r.status_code == 204, r.text
+        auth_client.post("/api/v1/auth/logout")
+        assert self._login(auth_client, "hunter2pw").status_code == 401
+        assert self._login(auth_client, "brandnewpw9").status_code == 200
+
+    def test_wrong_current_returns_400(self, auth_client: TestClient) -> None:
+        _register(auth_client)
+        r = auth_client.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "wrongpass", "new_password": "brandnewpw9"},
+        )
+        assert r.status_code == 400
+        assert r.json()["detail"]["error"]["code"] == "WRONG_PASSWORD"
+
+    def test_short_new_returns_400(self, auth_client: TestClient) -> None:
+        _register(auth_client)
+        r = auth_client.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "hunter2pw", "new_password": "short"},
+        )
+        assert r.status_code == 400
+
+    def test_requires_auth(self, auth_client: TestClient) -> None:
+        r = auth_client.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "x", "new_password": "brandnewpw9"},
+        )
+        assert r.status_code == 401

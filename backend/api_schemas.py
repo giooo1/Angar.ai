@@ -97,6 +97,20 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class UpdateProfileRequest(BaseModel):
+    """Body of PATCH /api/v1/me. Only provided fields are changed."""
+
+    full_name: str | None = None
+    locale: str | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    """Body of POST /api/v1/auth/change-password (logged-in change)."""
+
+    current_password: str
+    new_password: str
+
+
 class VerifyEmailRequest(BaseModel):
     """Body of POST /api/v1/auth/verify-email."""
 
