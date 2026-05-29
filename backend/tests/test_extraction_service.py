@@ -222,6 +222,24 @@ class TestRunExtraction:
         assert result_ex.error_message is None
         extractor.extract.assert_called_once()
 
+    def test_stamps_real_filename_over_model_sentinel(
+        self, db_session, tmp_storage, tmp_path, test_user, test_org
+    ) -> None:
+        """The model can't see the upload's name (mock canonical says "x.pdf");
+        run_extraction must overwrite source_filename with the real one."""
+        s = _settings(tmp_path)
+        doc, ex, _ = store_uploaded_file(
+            content=b"pdf-bytes", filename="real-invoice.pdf", mime="application/pdf",
+            storage=tmp_storage, db=db_session, settings=s,
+            org_id=test_org.id, user_id=test_user.id,
+        )
+        extractor = _mock_extractor(_success_result())  # canonical source_filename="x.pdf"
+        result_ex = run_extraction(
+            extraction_id=ex.id, db=db_session, storage=tmp_storage, extractor=extractor,
+        )
+        assert result_ex.canonical_data is not None
+        assert result_ex.canonical_data["extraction"]["source_filename"] == "real-invoice.pdf"
+
     def test_parse_failure_marks_failed(
         self, db_session, tmp_storage, tmp_path, test_user, test_org
     ) -> None:

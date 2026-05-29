@@ -207,6 +207,11 @@ def run_extraction(
         extraction.completed_at = _utcnow()
 
         if result.canonical is not None:
+            # The model can't see the uploaded file's name and emits a sentinel
+            # ("<pdf filename>"); stamp the real filename we recorded on upload so
+            # the stored canonical (and exports) carry the truth.
+            if document.original_filename:
+                result.canonical.extraction.source_filename = document.original_filename
             extraction.canonical_data = result.canonical.model_dump(mode="json")
             extraction.field_confidence = compute_field_confidence(result.canonical)
             extraction.warnings = []
