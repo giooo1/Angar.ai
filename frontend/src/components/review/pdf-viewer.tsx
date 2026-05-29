@@ -123,6 +123,13 @@ export function PdfViewer({ documentId, filename, fullscreen, onToggleFullscreen
   const baseWidth = Math.max(0, areaWidth - (showRail ? RAIL_W + GAP : 0));
   const pageWidth = baseWidth > 0 ? baseWidth * zoom : undefined;
 
+  // Render the canvas at a higher pixel density when zoomed out so thin/light
+  // text (e.g. light-gray price columns) doesn't rasterize away. We compensate
+  // by 1/zoom so the absolute raster stays ~constant at the full-width
+  // resolution, capped at 4x to bound canvas memory.
+  const baseDpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+  const renderDpr = Math.min(4, baseDpr * Math.max(1, 1 / zoom));
+
   return (
     <div
       className={cn(
@@ -203,6 +210,7 @@ export function PdfViewer({ documentId, filename, fullscreen, onToggleFullscreen
                   <Page
                     pageNumber={pageNumber}
                     width={pageWidth}
+                    devicePixelRatio={renderDpr}
                     rotate={rotation}
                     renderTextLayer
                     renderAnnotationLayer
