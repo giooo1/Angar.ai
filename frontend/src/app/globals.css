@@ -157,8 +157,8 @@ body { min-height: 100vh; overflow-x: hidden; }
   to { transform: rotate(360deg); }
 }
 
-/* Activity card shimmer rail on /upload (WS1). */
-@keyframes upShimmer {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+/* Activity card indeterminate progress line on /upload. */
+@keyframes upIndeterminate {
+  0%   { left: -40%; }
+  100% { left: 100%; }
 }

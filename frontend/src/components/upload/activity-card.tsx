@@ -123,9 +123,6 @@ function InFlightRow({ item }: { item: UploadState }) {
   }
 
   const verbing = item.phase === "uploading" ? "uploading" : "extracting";
-  // Crude % estimate so the user sees motion. Extraction averages ~3s on Sonnet.
-  const estTotal = item.phase === "uploading" ? 1.5 : 4.0;
-  const pct = Math.min(95, Math.round((elapsed / estTotal) * 100));
 
   return (
     <Row>
@@ -137,10 +134,7 @@ function InFlightRow({ item }: { item: UploadState }) {
           <span className="text-ink-3">· {elapsed.toFixed(1)}s elapsed</span>
         </span>
       </Meta>
-      <span className="font-mono text-[11px] text-accent font-semibold tabular-nums min-w-[34px] text-right">
-        {pct}%
-      </span>
-      <ShimmerRail pct={pct} />
+      <IndeterminateRail />
     </Row>
   );
 }
@@ -234,15 +228,10 @@ function Spinner() {
   );
 }
 
-function ShimmerRail({ pct }: { pct: number }) {
+function IndeterminateRail() {
   return (
     <span className="absolute left-4 right-4 bottom-0 h-[2px] bg-line-3 overflow-hidden rounded-[1px]">
-      <span
-        className="block h-full bg-accent rounded-[1px] relative transition-[width] duration-300"
-        style={{ width: `${pct}%` }}
-      >
-        <span className="absolute top-0 right-0 w-10 h-full animate-[upShimmer_1.4s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/90 to-transparent" />
-      </span>
+      <span className="absolute top-0 h-full w-2/5 rounded-[1px] bg-gradient-to-r from-transparent via-accent to-transparent animate-[upIndeterminate_1.2s_ease-in-out_infinite]" />
     </span>
   );
 }
