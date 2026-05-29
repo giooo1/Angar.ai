@@ -22,7 +22,7 @@ export function DocumentStrip({
   confidence,
 }: Props) {
   return (
-    <SectionBlock letter="D" showLetter title="Document">
+    <SectionBlock letter="D" title="Document">
       <ConfidenceRow
         extractionId={extractionId}
         fieldPath="document_number"
