@@ -12,6 +12,17 @@ import { useDocumentFile } from "@/hooks/use-document-file";
 // Self-hosted worker (copied into /public, version-pinned to pdfjs-dist).
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
+// Self-hosted pdfjs font assets (also copied into /public). Without these,
+// pdfjs can't load CMaps / standard fonts and silently drops glyphs for some
+// embedded fonts (e.g. the light-gray price columns on PrestaShop invoices).
+// Module-level constant so the reference is stable across renders — react-pdf
+// reloads the document if `options` changes identity.
+const PDF_OPTIONS = {
+  cMapUrl: "/cmaps/",
+  cMapPacked: true,
+  standardFontDataUrl: "/standard_fonts/",
+};
+
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 0.25;
@@ -178,6 +189,7 @@ export function PdfViewer({ documentId, filename, fullscreen, onToggleFullscreen
         ) : (
           <Document
             file={blobUrl}
+            options={PDF_OPTIONS}
             onLoadSuccess={({ numPages: n }) => {
               setNumPages(n);
               setPageNumber((p) => Math.min(p, n));
