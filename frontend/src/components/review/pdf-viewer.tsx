@@ -304,6 +304,15 @@ function ControlBar({
             <path d="M12 5v14M5 12h14" />
           </IconBtn>
         </div>
+        <IconBtn
+          label="Fit to width"
+          onClick={onResetZoom}
+          disabled={zoom === 1}
+          outlined
+        >
+          <path d="M8 12H3m0 0l3-3m-3 3l3 3" />
+          <path d="M16 12h5m0 0l-3-3m3 3l-3 3" />
+        </IconBtn>
         <IconBtn label="Rotate 90°" onClick={onRotate} outlined>
           <path d="M21 12a9 9 0 11-3-6.7L21 8" />
           <path d="M21 3v5h-5" />
