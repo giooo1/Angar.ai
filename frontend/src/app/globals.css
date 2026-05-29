@@ -34,6 +34,11 @@
   --color-error:       #b8342f;
   --color-error-soft:  #f7dad6;
 
+  /* Neutral "empty / not on document" — calm, never alarming. */
+  --color-neutral:      #9aa0ab;
+  --color-neutral-soft: #f1eee8;
+  --color-neutral-line: #e3ded4;
+
   --font-sans:  var(--font-inter), "Noto Sans Georgian", ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-fraunces), "Noto Serif Georgian", serif;
   --font-mono:  var(--font-jetbrains-mono), ui-monospace, monospace;

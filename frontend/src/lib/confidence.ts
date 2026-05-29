@@ -1,34 +1,57 @@
 /**
- * Frontend helpers for the per-field confidence scores the backend now
+ * Frontend helpers for the per-field confidence scores the backend
  * persists on `Extraction.field_confidence` (WS2). Pairs with
- * `<ConfidenceRow>` in the Review v2 UI.
+ * `<ConfidenceRow>` and the other review blocks.
  *
- * Score bands (synced with `backend/confidence.py`):
- *   1.00       perfect    — high
- *   0.85       format off — high
- *   0.70       cross-check fail — med
- *   0.40       suspicious — low
- *   0.00       missing — low
+ * The review screen uses a two-axis state model: presence (is the field
+ * on the document?) is separate from confidence (did the model read it
+ * surely?). The backend already encodes presence in the score
+ * (`backend/confidence.py`): 0.0 means null/missing, 0.40 present-but-junk,
+ * 0.85/1.0 present & good. We derive a calm three-state model from the
+ * value plus the score so a field that's simply blank on the invoice reads
+ * neutral grey ("not on document"), never red.
  *
- * Frontend bins:
- *   ≥ 0.85   high (calm, score chip)
- *   0.60–0.84 med  (yellow tint + score chip)
- *   < 0.60   low  (red tint + ! badge)
+ *   verified — present and confident (score ≥ 0.85, user-confirmed, or
+ *              unscored legacy data); calm, green ✓.
+ *   check    — present but the model is unsure (score < 0.85); amber, %.
+ *   empty    — absent/blank on the document; neutral grey.
  *
- * The "verified" tier is a UI-only state — the user clicks a score
- * chip to mark a field as personally checked. We persist that flag in
- * localStorage keyed by `extraction_id + field_path` so navigating
- * away and back doesn't clear it, and so the next page render shows
- * the same Verified affordance.
+ * The "user-confirmed" flag is UI-only: clicking a check/empty chip marks
+ * the field as personally checked. We persist that in localStorage keyed by
+ * `extraction_id + field_path` so it survives navigation and reloads.
  */
 
-export type ConfidenceBucket = "high" | "med" | "low" | "verified" | "unknown";
+export type FieldState = "verified" | "check" | "empty";
 
-export function bucket(score: number | undefined): ConfidenceBucket {
-  if (score === undefined) return "unknown";
-  if (score >= 0.85) return "high";
-  if (score >= 0.60) return "med";
-  return "low";
+/** At or above this score a present field is treated as verified (calm). */
+export const VERIFIED_THRESHOLD = 0.85;
+
+/**
+ * Whether a field carries a real value. Null/undefined and empty-after-trim
+ * are absent; backend "suspicious" placeholders (e.g. "N/A", "—") still count
+ * as present so the reviewer sees and can fix them.
+ */
+export function isPresent(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  return String(value).trim() !== "";
+}
+
+/**
+ * Derive a field's visual state from its presence, confidence score, and the
+ * user-confirmed flag. Present-but-unscored (legacy extractions) defaults to
+ * the calm "verified" rather than alarming.
+ */
+export function fieldState(
+  present: boolean,
+  score: number | undefined,
+  confirmed: boolean,
+): FieldState {
+  // An explicit user confirmation always wins — including confirming that a
+  // blank field is correctly absent.
+  if (confirmed) return "verified";
+  if (!present) return "empty";
+  if (score === undefined) return "verified";
+  return score >= VERIFIED_THRESHOLD ? "verified" : "check";
 }
 
 export function formatPct(score: number | undefined): string {
@@ -40,21 +63,6 @@ export function meanConfidence(scores: Record<string, number>): number | null {
   const values = Object.values(scores);
   if (values.length === 0) return null;
   return values.reduce((acc, v) => acc + v, 0) / values.length;
-}
-
-export function countByBucket(
-  scores: Record<string, number>,
-): { high: number; med: number; low: number } {
-  let high = 0;
-  let med = 0;
-  let low = 0;
-  for (const v of Object.values(scores)) {
-    const b = bucket(v);
-    if (b === "high") high++;
-    else if (b === "med") med++;
-    else if (b === "low") low++;
-  }
-  return { high, med, low };
 }
 
 // ---------------------------------------------------------------------------

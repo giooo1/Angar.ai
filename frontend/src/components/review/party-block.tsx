@@ -33,7 +33,7 @@ export function PartyBlock({
         extractionId={extractionId}
         fieldPath={`${side}.name`}
         label="Name"
-        value={party?.name ?? "—"}
+        value={party?.name ?? null}
         confidence={confidence[`${side}.name`]}
         valueClassName={
           party?.script === "mkhedruli" || party?.script === "mixed"
@@ -45,7 +45,7 @@ export function PartyBlock({
         extractionId={extractionId}
         fieldPath={`${side}.tin`}
         label="TIN"
-        value={party?.tin ?? "—"}
+        value={party?.tin ?? null}
         confidence={confidence[`${side}.tin`]}
       />
       <ConfidenceRow
@@ -54,13 +54,14 @@ export function PartyBlock({
         label="Party type"
         value={partyTypeLabel(party?.party_type)}
         confidence={confidence[`${side}.party_type`]}
+        present={!!party}
         editable={false}
       />
       <ConfidenceRow
         extractionId={extractionId}
         fieldPath={`${side}.address`}
         label="Address"
-        value={party?.address ?? "—"}
+        value={party?.address ?? null}
         confidence={confidence[`${side}.address`]}
         full
       />

@@ -1,17 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import { cn } from "@/lib/utils";
-import {
-  bucket,
-  formatPct,
-  isVerified,
-  setVerified,
-  type ConfidenceBucket,
-} from "@/lib/confidence";
+import { fieldState, isPresent } from "@/lib/confidence";
 import type { Money } from "@/lib/canonical";
 import { commitText, useReviewEdit } from "./review-edit-context";
+import { StateChip, useConfirmed } from "./field-state-ui";
 import { SectionBlock } from "./section-block";
 
 type Props = {
@@ -27,7 +20,8 @@ type Props = {
 /**
  * Right-aligned totals block. Standard rows for Subtotal / VAT,
  * muted rows for null Shipping / Discount, and a big Grand total row
- * at the bottom. Each amount has its own confidence chip.
+ * at the bottom. Each amount carries its own two-axis state chip; a total
+ * that's simply not on the document reads neutral "not on document".
  */
 export function TotalsBlock({
   extractionId,
@@ -75,6 +69,10 @@ function MoneyText({ money }: { money: Money | null }) {
   );
 }
 
+function EmptyAmount() {
+  return <span className="text-ink-4 italic">not on document</span>;
+}
+
 function AmountRow({
   extractionId,
   fieldPath,
@@ -88,36 +86,32 @@ function AmountRow({
   money: Money | null;
   confidence?: number;
 }) {
-  const [verified, setVerifiedState] = useState(false);
+  const { confirmed, toggle } = useConfirmed(extractionId, fieldPath);
   const edit = useReviewEdit();
-  useEffect(() => {
-    setVerifiedState(isVerified(extractionId, fieldPath));
-  }, [extractionId, fieldPath]);
-  const b: ConfidenceBucket = verified ? "verified" : bucket(confidence);
-
-  const onToggle = () => {
-    const next = !verified;
-    setVerified(extractionId, fieldPath, next);
-    setVerifiedState(next);
-  };
+  const present = !!money && isPresent(money.amount);
+  const state = fieldState(present, confidence, confirmed);
 
   return (
     <div
       className={cn(
         "grid grid-cols-[1fr_auto_auto] items-center gap-3.5 px-3.5 py-1.5 font-mono text-[12px]",
-        b === "med" &&
+        state === "check" &&
           "bg-gradient-to-r from-warn-soft to-transparent border-l-[3px] border-warn pl-[15px]",
-        b === "low" &&
-          "bg-gradient-to-r from-error-soft to-transparent border-l-[3px] border-error pl-[15px]",
       )}
     >
       <span className="text-[10px] text-ink-3 tracking-[0.07em] uppercase font-medium">
         {label}
       </span>
       <span className="text-ink font-medium text-right">
-        <EditableAmount money={money} fieldPath={fieldPath} edit={edit} />
+        {money ? <EditableAmount money={money} fieldPath={fieldPath} edit={edit} /> : <EmptyAmount />}
       </span>
-      <Chip bucket={b} score={confidence} onClick={onToggle} />
+      <StateChip
+        state={state}
+        score={confidence}
+        confirmed={confirmed}
+        onToggle={toggle}
+        className="justify-end min-w-[84px]"
+      />
     </div>
   );
 }
@@ -125,18 +119,16 @@ function AmountRow({
 /**
  * The amount portion of a money cell, editable on its own; the currency code
  * sits beside it as a static suffix so a blur capture reads just the number.
- * A null money renders a non-editable "—".
  */
 function EditableAmount({
   money,
   fieldPath,
   edit,
 }: {
-  money: Money | null;
+  money: Money;
   fieldPath: string;
   edit: ReturnType<typeof useReviewEdit>;
 }) {
-  if (!money) return <span className="text-ink-4">—</span>;
   return (
     <>
       <span
@@ -181,18 +173,10 @@ function GrandRow({
   money: Money | null;
   confidence?: number;
 }) {
-  const [verified, setVerifiedState] = useState(false);
+  const { confirmed, toggle } = useConfirmed(extractionId, fieldPath);
   const edit = useReviewEdit();
-  useEffect(() => {
-    setVerifiedState(isVerified(extractionId, fieldPath));
-  }, [extractionId, fieldPath]);
-  const b: ConfidenceBucket = verified ? "verified" : bucket(confidence);
-
-  const onToggle = () => {
-    const next = !verified;
-    setVerified(extractionId, fieldPath, next);
-    setVerifiedState(next);
-  };
+  const present = !!money && isPresent(money.amount);
+  const state = fieldState(present, confidence, confirmed);
 
   return (
     <div className="mt-1 grid grid-cols-[1fr_auto_auto] items-center gap-3.5 px-3.5 py-2.5 border-t border-line-2 bg-paper-2">
@@ -219,48 +203,16 @@ function GrandRow({
             </span>
           </>
         ) : (
-          <span className="text-ink-4">—</span>
+          <span className="text-[14px] font-mono italic text-ink-4">not on document</span>
         )}
       </span>
-      <Chip bucket={b} score={confidence} onClick={onToggle} />
+      <StateChip
+        state={state}
+        score={confidence}
+        confirmed={confirmed}
+        onToggle={toggle}
+        className="justify-end min-w-[84px]"
+      />
     </div>
-  );
-}
-
-function Chip({
-  bucket: b,
-  score,
-  onClick,
-}: {
-  bucket: ConfidenceBucket;
-  score: number | undefined;
-  onClick: () => void;
-}) {
-  if (b === "unknown") {
-    return <span className="font-mono text-[10.5px] text-ink-4 min-w-[60px] text-right">—</span>;
-  }
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={b === "verified" ? "Click to unverify" : "Click to mark verified"}
-      className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-1 rounded-md border font-mono font-semibold tracking-[0.02em] justify-end min-w-[84px] cursor-pointer transition-[filter] hover:brightness-95",
-        b === "high" && "bg-accent-soft text-accent border-accent/20 text-[10.5px]",
-        b === "med" && "bg-warn-soft text-[#7a5a13] border-warn/30 text-[10.5px]",
-        b === "low" && "bg-error-soft text-[#7a201d] border-error/30 text-[10.5px]",
-        b === "verified" &&
-          "bg-paper text-accent border-accent/30 uppercase text-[9.5px] tracking-[0.05em]",
-      )}
-    >
-      {b === "verified" ? (
-        <>
-          <span className="font-bold text-accent-2">✓</span>
-          <span>Verified</span>
-        </>
-      ) : (
-        <span>{formatPct(score)}</span>
-      )}
-    </button>
   );
 }
