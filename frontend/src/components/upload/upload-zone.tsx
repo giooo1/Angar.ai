@@ -120,8 +120,8 @@ export function UploadZone({ onFiles, disabled }: Props) {
         Browse files
       </Button>
 
-      <p className="mt-3 flex items-center justify-center gap-2 text-[12.5px] text-ink-3 max-w-[440px] m-0 leading-snug">
-        <InfoIcon size={14} strokeWidth={1.7} className="text-ink-4 shrink-0" />
+      <p className="mt-3 mb-0 flex items-start justify-center gap-2 text-[12.5px] text-ink-3 max-w-[440px] leading-snug">
+        <InfoIcon size={14} strokeWidth={1.7} className="text-ink-4 shrink-0 mt-px" />
         დაბალი ხარისხის სკანების მუშავდება — ოღონდ უკეთესია სუფთა PDF.
       </p>
     </div>
