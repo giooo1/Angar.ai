@@ -12,14 +12,15 @@ import { pollExtraction, uploadDocument } from "@/lib/api";
  *   completed / failed              -> "Recent uploads" list
  */
 export type UploadState =
-  | { id: string; phase: "queued"; file: File }
-  | { id: string; phase: "uploading"; file: File }
+  | { id: string; phase: "queued"; file: File; startedAt: number }
+  | { id: string; phase: "uploading"; file: File; startedAt: number }
   | {
       id: string;
       phase: "extracting";
       file: File;
       documentId: string;
       extractionId: string;
+      startedAt: number;
     }
   | {
       id: string;
@@ -28,6 +29,8 @@ export type UploadState =
       documentId: string;
       extractionId: string;
       result: ExtractionStatusResponse;
+      startedAt: number;
+      durationMs: number;
     }
   | {
       id: string;
@@ -37,6 +40,8 @@ export type UploadState =
       code?: string;
       documentId?: string;
       extractionId?: string;
+      startedAt: number;
+      durationMs?: number;
     };
 
 let nextLocalId = 1;
@@ -103,6 +108,7 @@ export function useUpload() {
             documentId: upload.document_id,
             extractionId: upload.extraction_id,
             result: final,
+            durationMs: Date.now() - state.startedAt,
           });
         } else {
           patch(state.id, {
@@ -110,6 +116,7 @@ export function useUpload() {
             documentId: upload.document_id,
             extractionId: upload.extraction_id,
             error: final.error_message ?? "extraction failed",
+            durationMs: Date.now() - state.startedAt,
           });
         }
       } catch (err) {
@@ -119,11 +126,13 @@ export function useUpload() {
             phase: "failed",
             error: err.messageEn,
             code: err.code,
+            durationMs: Date.now() - state.startedAt,
           });
         } else {
           patch(state.id, {
             phase: "failed",
             error: err instanceof Error ? err.message : String(err),
+            durationMs: Date.now() - state.startedAt,
           });
         }
       } finally {
@@ -139,6 +148,7 @@ export function useUpload() {
         id: `local-${nextLocalId++}`,
         phase: "queued" as const,
         file,
+        startedAt: Date.now(),
       }));
       // Newest first, in front of older entries.
       setUploads((prev) => [...fresh, ...prev]);

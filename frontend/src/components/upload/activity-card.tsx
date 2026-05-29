@@ -30,13 +30,12 @@ export function ActivityCard({ items }: Props) {
     <div className="bg-paper border border-line rounded-xl overflow-hidden flex flex-col">
       <header className="flex items-center justify-between px-4 py-3.5 border-b border-line-2 font-mono text-[10.5px] text-ink-3 tracking-[0.08em] uppercase font-medium">
         <span>Activity</span>
-        {inFlight.length > 0 ? (
-          <LiveIndicator active={activeCount} queued={queuedCount} />
-        ) : done.length > 0 ? (
-          <span className="text-ink-3 normal-case tracking-[0.04em] text-[11px]">
-            {done.length} processed
-          </span>
-        ) : null}
+        <StatusSummary
+          active={activeCount}
+          queued={queuedCount}
+          done={done.length}
+          live={inFlight.length > 0}
+        />
       </header>
 
       {items.length === 0 ? (
@@ -45,8 +44,13 @@ export function ActivityCard({ items }: Props) {
         <>
           {inFlight.length > 0 && (
             <Group label="Processing">
-              {inFlight.map((u) => (
-                <InFlightRow key={u.id} item={u} />
+              {inFlight.map((u, idx) => (
+                <InFlightRow
+                  key={u.id}
+                  item={u}
+                  pos={inFlight.length - idx}
+                  total={inFlight.length}
+                />
               ))}
             </Group>
           )}
@@ -63,13 +67,34 @@ export function ActivityCard({ items }: Props) {
   );
 }
 
-function LiveIndicator({ active, queued }: { active: number; queued: number }) {
+function StatusSummary({
+  active,
+  queued,
+  done,
+  live,
+}: {
+  active: number;
+  queued: number;
+  done: number;
+  live: boolean;
+}) {
+  const segments: string[] = [];
+  if (active > 0) segments.push(`${active} active`);
+  if (queued > 0) segments.push(`${queued} queued`);
+  if (done > 0) segments.push(`${done} just processed`);
+  if (segments.length === 0) return null;
+
   return (
-    <span className="inline-flex items-center gap-2 text-accent normal-case tracking-[0.04em] text-[11px]">
-      <span className="w-[6px] h-[6px] rounded-full bg-accent-2 shadow-[0_0_0_3px_rgba(45,106,79,0.16)] animate-[pulse_1.8s_ease-in-out_infinite]" />
-      {active > 0 && `${active} active`}
-      {active > 0 && queued > 0 && " · "}
-      {queued > 0 && `${queued} queued`}
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 normal-case tracking-[0.04em] text-[11px]",
+        live ? "text-accent" : "text-ink-3",
+      )}
+    >
+      {live && (
+        <span className="w-[6px] h-[6px] rounded-full bg-accent-2 shadow-[0_0_0_3px_rgba(45,106,79,0.16)] animate-[pulse_1.8s_ease-in-out_infinite]" />
+      )}
+      {segments.join(" · ")}
     </span>
   );
 }
@@ -104,7 +129,7 @@ function EmptyState() {
   );
 }
 
-function InFlightRow({ item }: { item: UploadState }) {
+function InFlightRow({ item, pos, total }: { item: UploadState; pos: number; total: number }) {
   const elapsed = useElapsedSeconds(item.id);
 
   if (item.phase === "queued") {
@@ -113,7 +138,7 @@ function InFlightRow({ item }: { item: UploadState }) {
         <Thumb />
         <Meta name={item.file.name}>
           <span className="text-ink-3 font-mono text-[10.5px] tracking-[0.04em]">
-            queued
+            queued · {pos} of {total} in line
           </span>
         </Meta>
         <span className="font-mono text-[11px] text-ink-3 font-medium tabular-nums">—</span>
@@ -146,9 +171,10 @@ function DoneRow({ item }: { item: UploadState }) {
   const extractionId =
     item.phase === "completed" ? item.extractionId : item.extractionId ?? null;
 
-  const sub = isOk
-    ? "extracted"
-    : `failed${item.code ? ` · ${item.code}` : ""}`;
+  const sub =
+    item.phase === "completed"
+      ? `extracted · in ${(item.durationMs / 1000).toFixed(1)}s`
+      : `failed${item.code ? ` · ${item.code}` : ""}`;
 
   return (
     <Row>

@@ -3,17 +3,14 @@
 import { type DragEvent, useCallback, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { PlusIcon, UploadIcon } from "@/components/ui/icons";
+import { InfoIcon, PlusIcon, UploadIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 
-const ACCEPTED_TYPES = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/heic",
-];
-
 const ACCEPT_ATTR = ".pdf,.jpg,.jpeg,.png,.heic,application/pdf,image/jpeg,image/png,image/heic";
+
+// Document categories Angar handles — decorative hints, not a selectable
+// filter (type is auto-detected during extraction).
+const DOC_TYPES = ["Invoice", "Waybill", "Receipt", "Contract", "Custom"];
 
 type Props = {
   onFiles: (files: File[]) => void;
@@ -98,22 +95,22 @@ export function UploadZone({ onFiles, disabled }: Props) {
       </div>
 
       <h2 className="font-serif text-[26px] font-normal tracking-[-0.02em] m-0 leading-tight">
-        დატოვე ფაილები ან{" "}
-        <em className="italic text-accent not-italic font-normal">აირჩიე</em>
+        გადმოიტანე ფაილი ან{" "}
+        <em className="italic text-accent font-normal">აირჩიე</em>
       </h2>
 
       <p className="text-sm text-ink-3 max-w-[380px] m-0 text-pretty">
-        PDF, JPG, PNG, ან HEIC — მაქს. <b className="text-ink font-medium">20MB</b>. ერთდროულად
-        შეიძლება ატვირთო <b className="text-ink font-medium">100-მდე</b> ფაილი.
+        PDF, JPG, PNG ან HEIC — მაქს. <b className="text-ink font-medium">20MB</b>. ერთდროულად
+        შეგიძლია ატვირთო <b className="text-ink font-medium">100-მდე</b> ფაილი.
       </p>
 
       <div className="mt-2.5 flex gap-2 flex-wrap justify-center">
-        {ACCEPTED_TYPES.map((t) => (
+        {DOC_TYPES.map((t) => (
           <span
             key={t}
             className="px-2.5 py-1 rounded-full bg-paper-2 font-mono text-[10.5px] text-ink-3 tracking-[0.04em] uppercase border border-line-2"
           >
-            {t.split("/")[1].replace("application/", "").replace("image/", "")}
+            {t}
           </span>
         ))}
       </div>
@@ -122,6 +119,11 @@ export function UploadZone({ onFiles, disabled }: Props) {
         <PlusIcon size={14} strokeWidth={2} />
         Browse files
       </Button>
+
+      <p className="mt-3 flex items-center justify-center gap-2 text-[12.5px] text-ink-3 max-w-[440px] m-0 leading-snug">
+        <InfoIcon size={14} strokeWidth={1.7} className="text-ink-4 shrink-0" />
+        დაბალი ხარისხის სკანების მუშავდება — ოღონდ უკეთესია სუფთა PDF.
+      </p>
     </div>
   );
 }
