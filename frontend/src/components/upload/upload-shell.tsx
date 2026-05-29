@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { GridIcon, MailIcon } from "@/components/ui/icons";
 import type { OrganizationDTO } from "@/lib/api-types";
 import { ActivityCard } from "./activity-card";
-import { TipsPanel } from "./tips-panel";
 import { UploadZone } from "./upload-zone";
 import { UsagePanel } from "./usage-panel";
 import { useUpload } from "@/hooks/use-upload";
@@ -96,7 +95,6 @@ export function UploadShell({ organization }: Props) {
         <div className="flex flex-col gap-[18px]">
           <UsagePanelWired organization={organization} />
           <ActivityCard items={uploads} />
-          <TipsPanel />
         </div>
       </div>
     </main>
