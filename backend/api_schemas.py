@@ -33,6 +33,9 @@ class ExtractionStatusResponse(BaseModel):
     status: ExtractionStatus
     prompt_version: str
     model_version: str
+    # The real uploaded filename. The model can't see it — its
+    # canonical.extraction.source_filename is a sentinel ("<pdf filename>").
+    original_filename: str | None = None
     canonical_data: dict[str, Any] | None = None
     corrected_data: dict[str, Any] | None = None
     warnings: list[str] = Field(default_factory=list)

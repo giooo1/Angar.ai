@@ -94,7 +94,8 @@ export function ReviewWorkspace({ data }: Props) {
     [],
   );
 
-  const filename = canonical?.extraction.source_filename ?? "document";
+  const filename =
+    data.original_filename ?? canonical?.extraction.source_filename ?? "document";
 
   return (
     <ReviewEditProvider value={ctx}>

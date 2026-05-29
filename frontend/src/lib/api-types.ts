@@ -25,6 +25,9 @@ export interface ExtractionStatusResponse {
   status: ExtractionStatus;
   prompt_version: string;
   model_version: string;
+  /** Real uploaded filename. The model can't see it, so
+   *  `canonical.extraction.source_filename` is a sentinel — prefer this. */
+  original_filename: string | null;
   canonical_data: CanonicalInvoice | null;
   /** Reviewer edits, null until the user saves. The review screen and exports
    *  prefer this over `canonical_data` when present; `canonical_data` always

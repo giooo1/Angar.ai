@@ -14,7 +14,12 @@ type Props = {
  * right pane (acceptance banner + action bar) per the new spec.
  */
 export function FileBar({ extraction, canonical }: Props) {
-  const filename = canonical?.extraction.source_filename ?? "(unknown filename)";
+  // The model can't read the uploaded file's name (it emits a "<pdf filename>"
+  // sentinel), so prefer the real filename the backend recorded on upload.
+  const filename =
+    extraction.original_filename ??
+    canonical?.extraction.source_filename ??
+    "(unknown filename)";
   const ms = extraction.processing_time_ms ?? 0;
   const sec = ms > 0 ? (ms / 1000).toFixed(1) : null;
   const sub = [

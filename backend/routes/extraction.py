@@ -77,6 +77,7 @@ def _status_response(doc: Document, extraction: Extraction) -> ExtractionStatusR
         status=extraction.status,  # type: ignore[arg-type]
         prompt_version=extraction.prompt_version,
         model_version=extraction.model_version,
+        original_filename=doc.original_filename,
         canonical_data=extraction.canonical_data,
         corrected_data=extraction.corrected_data,
         warnings=extraction.warnings or [],
