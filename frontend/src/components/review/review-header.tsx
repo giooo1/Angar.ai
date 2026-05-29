@@ -130,10 +130,17 @@ export function ReviewHeader({
           onClick={onReextract}
           disabled={busy}
           title="Re-extract"
-          className="hidden sm:inline-flex text-[12.5px] text-ink-3 hover:text-ink-2 hover:underline font-[450] cursor-pointer items-center gap-1 disabled:opacity-50"
+          className="hidden sm:inline-flex text-[12.5px] text-ink-3 hover:text-ink-2 hover:underline font-[450] cursor-pointer items-center gap-1.5 disabled:opacity-60 disabled:no-underline"
         >
-          <span aria-hidden="true">↻</span>
-          {busy ? "…" : "Re-extract"}
+          {busy ? (
+            <span
+              aria-hidden="true"
+              className="inline-block w-3 h-3 rounded-full border-[1.5px] border-line border-t-ink-3 animate-[spin_0.8s_linear_infinite]"
+            />
+          ) : (
+            <span aria-hidden="true">↻</span>
+          )}
+          {busy ? "Re-extracting…" : "Re-extract"}
         </button>
         <button
           type="button"
