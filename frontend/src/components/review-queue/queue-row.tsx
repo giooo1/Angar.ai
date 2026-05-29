@@ -26,7 +26,7 @@ export function QueueRow({ item }: Props) {
       <span className="doc-thumb" style={{ width: 26, height: 32 }} />
       <div className="min-w-0">
         <div className="text-[13.5px] font-medium tracking-[-0.005em] overflow-hidden text-ellipsis whitespace-nowrap">
-          {canonical?.extraction.source_filename ?? "(no filename)"}
+          {item.original_filename ?? canonical?.extraction.source_filename ?? "(no filename)"}
         </div>
         <div className="font-mono text-[10.5px] text-ink-3 tracking-[0.04em] mt-0.5">
           {docNumber}
