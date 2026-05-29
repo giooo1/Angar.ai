@@ -59,6 +59,32 @@ export function formatPct(score: number | undefined): string {
   return `${Math.round(score * 100)}%`;
 }
 
+/**
+ * Aggregate the two-axis states across the scored fields, for the review
+ * summary. Mirrors the per-row bands (model confidence, not user
+ * confirmations): score ≥ threshold → verified, 0 < score < threshold →
+ * check, score 0 → empty. `items` is excluded — the line-items table has no
+ * per-field state chip. `present = verified + check`.
+ */
+export function summarizeFieldStates(scores: Record<string, number>): {
+  verified: number;
+  check: number;
+  empty: number;
+  present: number;
+  total: number;
+} {
+  let verified = 0;
+  let check = 0;
+  let empty = 0;
+  for (const [key, score] of Object.entries(scores)) {
+    if (key === "items") continue;
+    if (score >= VERIFIED_THRESHOLD) verified++;
+    else if (score > 0) check++;
+    else empty++;
+  }
+  return { verified, check, empty, present: verified + check, total: verified + check + empty };
+}
+
 export function meanConfidence(scores: Record<string, number>): number | null {
   const values = Object.values(scores);
   if (values.length === 0) return null;
