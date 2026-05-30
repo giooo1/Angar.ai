@@ -59,7 +59,6 @@ export function SignupForm() {
           autoComplete="organization"
           value={orgName}
           onChange={(e) => setOrgName(e.target.value)}
-          placeholder="Mtkvari & Co"
           className="auth-input"
         />
       </Field>
