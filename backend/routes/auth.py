@@ -127,6 +127,7 @@ def _set_session_cookie(response: Response, token: str, settings: Settings) -> N
         httponly=True,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,  # type: ignore[arg-type]
+        domain=settings.cookie_domain or None,
         path="/",
     )
 
@@ -206,6 +207,7 @@ def _clear_session_cookie(response: Response, settings: Settings) -> None:
         httponly=True,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,  # type: ignore[arg-type]
+        domain=settings.cookie_domain or None,
     )
 
 
@@ -671,6 +673,7 @@ def google_start(
         httponly=True,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,  # type: ignore[arg-type]
+        domain=settings.cookie_domain or None,
         path="/",
     )
     return redirect
@@ -691,7 +694,7 @@ def google_callback(
 
     def _fail(err: str) -> RedirectResponse:
         resp = _login_redirect(settings, err)
-        resp.delete_cookie(_GOOGLE_STATE_COOKIE, path="/")
+        resp.delete_cookie(_GOOGLE_STATE_COOKIE, path="/", domain=settings.cookie_domain or None)
         return resp
 
     if error or not code:
@@ -756,5 +759,5 @@ def google_callback(
         f"{settings.frontend_origin}/upload", status_code=status.HTTP_302_FOUND
     )
     _set_session_cookie(redirect, token, settings)
-    redirect.delete_cookie(_GOOGLE_STATE_COOKIE, path="/")
+    redirect.delete_cookie(_GOOGLE_STATE_COOKIE, path="/", domain=settings.cookie_domain or None)
     return redirect

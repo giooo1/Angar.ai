@@ -1,0 +1,18 @@
+# Keep the backend image lean and secret-free.
+.git
+.gitignore
+.claude
+.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+
+# Frontend deploys on Vercel, not in this image.
+frontend
+node_modules
+
+# Local-only state and secrets — never bake into the image.
+.env
+.env.*
+backend/.local
+eval/runs

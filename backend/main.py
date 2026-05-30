@@ -44,11 +44,12 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
-# CORS for local Next.js dev (step 3 will run on :3000). Production CORS
-# narrowing is a step 5 concern.
+# CORS origins are env-driven (comma-separated `CORS_ORIGINS`); defaults to the
+# local dev origins. Credentials mode is on, so origins must be explicit (no "*").
+_cors_origins = [o.strip() for o in get_settings().cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

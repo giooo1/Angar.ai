@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     session_max_age_seconds: int = Field(default=7 * 24 * 3600)
     cookie_secure: bool = Field(default=False)  # set true in production over HTTPS
     cookie_samesite: str = Field(default="lax")  # "lax" | "strict" | "none"
+    # Empty → host-only cookie (current dev behavior). Set to a parent domain
+    # like ".angar.ai" so the cookie is shared across app./api. subdomains.
+    cookie_domain: str = Field(default="")
+    # Comma-separated allowed CORS origins (credentials mode → no "*").
+    # Production sets this to the deployed frontend origin(s).
+    cors_origins: str = Field(default="http://localhost:3000,http://localhost:8000")
 
     # --- Email: Resend (Phase 4.5 WS4) ---
     resend_api_key: str = Field(default="", description="Resend HTTP API key. Optional in dev.")
