@@ -11,9 +11,12 @@ import hashlib
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 
+import httpx
 from email_validator import EmailNotValidError, validate_email
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -584,3 +587,174 @@ def reset_password(
     jwt = encode_token(user_id=user.id, org_id=org.id, settings=settings)
     _set_session_cookie(response, jwt, settings)
     return _session_response(user, org)
+
+
+# ---------------------------------------------------------------------------
+# Google OAuth sign-in
+# ---------------------------------------------------------------------------
+
+_GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+_GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+_GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+_GOOGLE_STATE_COOKIE = "g_oauth_state"
+
+
+def _login_redirect(settings: Settings, error: str | None = None) -> RedirectResponse:
+    """Redirect back to the frontend login page, optionally with an error code."""
+    url = f"{settings.frontend_origin}/login"
+    if error:
+        url += f"?error={error}"
+    return RedirectResponse(url, status_code=status.HTTP_302_FOUND)
+
+
+def _google_exchange_code(code: str, settings: Settings) -> dict:
+    """Exchange an authorization code for tokens. Monkeypatched in tests."""
+    resp = httpx.post(
+        _GOOGLE_TOKEN_URL,
+        data={
+            "code": code,
+            "client_id": settings.google_client_id,
+            "client_secret": settings.google_client_secret,
+            "redirect_uri": settings.google_redirect_uri,
+            "grant_type": "authorization_code",
+        },
+        timeout=10.0,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def _google_userinfo(access_token: str) -> dict:
+    """Fetch the OpenID userinfo for an access token. Monkeypatched in tests."""
+    resp = httpx.get(
+        _GOOGLE_USERINFO_URL,
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=10.0,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def _derive_org_name(full_name: str | None, email: str) -> str:
+    first = (full_name or "").strip().split(" ")[0] if full_name else ""
+    handle = first or email.split("@", 1)[0]
+    return f"{handle}'s workspace"
+
+
+@router.get("/auth/google/start")
+def google_start(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+) -> RedirectResponse:
+    """Begin the Google OAuth flow: stash a CSRF state cookie and redirect to
+    Google's consent screen. No-ops gracefully when Google isn't configured."""
+    if not settings.google_client_id or not settings.google_client_secret:
+        return _login_redirect(settings, "google_unconfigured")
+
+    state = secrets.token_urlsafe(24)
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.google_redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "online",
+        "prompt": "select_account",
+    }
+    redirect = RedirectResponse(
+        f"{_GOOGLE_AUTH_URL}?{urlencode(params)}", status_code=status.HTTP_302_FOUND
+    )
+    redirect.set_cookie(
+        key=_GOOGLE_STATE_COOKIE,
+        value=state,
+        max_age=600,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,  # type: ignore[arg-type]
+        path="/",
+    )
+    return redirect
+
+
+@router.get("/auth/google/callback")
+def google_callback(
+    request: Request,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+) -> RedirectResponse:
+    """Handle Google's redirect: verify state, resolve the Google identity,
+    sign in (or auto-provision) the user, and set the session cookie."""
+    cookie_state = request.cookies.get(_GOOGLE_STATE_COOKIE)
+
+    def _fail(err: str) -> RedirectResponse:
+        resp = _login_redirect(settings, err)
+        resp.delete_cookie(_GOOGLE_STATE_COOKIE, path="/")
+        return resp
+
+    if error or not code:
+        return _fail("google")
+    if not state or not cookie_state or not secrets.compare_digest(state, cookie_state):
+        return _fail("google_state")
+
+    try:
+        tokens = _google_exchange_code(code, settings)
+        access_token = tokens.get("access_token")
+        if not access_token:
+            return _fail("google")
+        info = _google_userinfo(access_token)
+    except httpx.HTTPError:
+        return _fail("google")
+
+    if not info.get("email") or not info.get("email_verified"):
+        return _fail("google_unverified")
+
+    email = _normalize_email(info["email"])
+    user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+
+    if user is None:
+        # Auto-provision: Google sign-in doubles as sign-up.
+        user = User(
+            email=email,
+            password_hash=hash_password(secrets.token_urlsafe(32)),  # unusable
+            full_name=info.get("name") or None,
+            email_verified_at=datetime.now(tz=timezone.utc),
+            last_login_at=datetime.now(tz=timezone.utc),
+        )
+        org = Organization(
+            name=_derive_org_name(info.get("name"), email),
+            plan="free",
+            monthly_extraction_quota=PLAN_QUOTAS["free"],
+            monthly_extractions_used=0,
+            quota_reset_at=datetime.now(tz=timezone.utc) + timedelta(days=30),
+        )
+        db.add(user)
+        db.add(org)
+        db.flush()
+        db.add(OrganizationMember(organization_id=org.id, user_id=user.id, role="owner"))
+        db.commit()
+        db.refresh(user)
+        db.refresh(org)
+    else:
+        membership = db.execute(
+            select(OrganizationMember).where(OrganizationMember.user_id == user.id)
+        ).scalars().first()
+        if membership is None:
+            return _fail("google")
+        org = db.get(Organization, membership.organization_id)
+        if org is None:
+            return _fail("google")
+        if user.email_verified_at is None:
+            user.email_verified_at = datetime.now(tz=timezone.utc)
+        user.last_login_at = datetime.now(tz=timezone.utc)
+        db.commit()
+
+    token = encode_token(user_id=user.id, org_id=org.id, settings=settings)
+    redirect = RedirectResponse(
+        f"{settings.frontend_origin}/upload", status_code=status.HTTP_302_FOUND
+    )
+    _set_session_cookie(redirect, token, settings)
+    redirect.delete_cookie(_GOOGLE_STATE_COOKIE, path="/")
+    return redirect

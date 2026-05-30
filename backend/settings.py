@@ -69,6 +69,14 @@ class Settings(BaseSettings):
     email_verify_token_ttl_hours: int = Field(default=24)
     email_reset_token_ttl_hours: int = Field(default=1)
 
+    # --- Google OAuth sign-in ---
+    google_client_id: str = Field(default="", description="Google OAuth 2.0 Web client ID. Empty disables Google sign-in.")
+    google_client_secret: str = Field(default="", description="Google OAuth 2.0 client secret.")
+    google_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/auth/google/callback",
+        description="Must exactly match an authorized redirect URI in the Google Cloud console.",
+    )
+
     # --- Stripe (Phase 4.5 WS5) ---
     stripe_secret_key: str = Field(default="", description="sk_test_... / sk_live_... ")
     stripe_webhook_secret: str = Field(default="", description="whsec_... from Stripe CLI or dashboard.")

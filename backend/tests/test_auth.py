@@ -309,3 +309,98 @@ class TestChangePassword:
             json={"current_password": "x", "new_password": "brandnewpw9"},
         )
         assert r.status_code == 401
+
+
+class TestGoogleOAuth:
+    """Callback-side coverage with the Google HTTP calls monkeypatched.
+
+    The two `_google_*` helpers are stubbed so no real network call is made;
+    state-cookie / provisioning / linking logic is exercised end to end.
+    """
+
+    def _stub_google(self, monkeypatch, *, email: str, verified: bool = True, name: str | None = "Some One"):
+        monkeypatch.setattr(
+            "backend.routes.auth._google_exchange_code",
+            lambda code, settings: {"access_token": "stub-access-token"},
+        )
+        monkeypatch.setattr(
+            "backend.routes.auth._google_userinfo",
+            lambda access_token: {"email": email, "email_verified": verified, "name": name},
+        )
+
+    def test_unconfigured_start_redirects_with_error(self, auth_client: TestClient) -> None:
+        # The test settings have no google_client_id.
+        r = auth_client.get("/api/v1/auth/google/start", follow_redirects=False)
+        assert r.status_code == 302
+        assert r.headers["location"].endswith("/login?error=google_unconfigured")
+
+    def test_new_email_provisions_account_and_signs_in(
+        self, auth_client: TestClient, monkeypatch
+    ) -> None:
+        self._stub_google(monkeypatch, email="newperson@example.com", name="New Person")
+        auth_client.cookies.set("g_oauth_state", "state123")
+        r = auth_client.get(
+            "/api/v1/auth/google/callback?code=abc&state=state123",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302, r.text
+        assert r.headers["location"].endswith("/upload")
+        assert "angar_session" in r.cookies
+        # The freshly-set session works.
+        me = auth_client.get("/api/v1/me")
+        assert me.status_code == 200
+        body = me.json()
+        assert body["user"]["email"] == "newperson@example.com"
+        # Auto-provisioned org named off the Google display name.
+        assert "New" in body["organization"]["name"]
+
+    def test_existing_email_links_without_duplicate_org(
+        self, auth_client: TestClient, db_session, monkeypatch
+    ) -> None:
+        from sqlalchemy import select as _select
+        from backend.models import OrganizationMember, User
+
+        _register(auth_client)  # alice@example.com + her org
+        auth_client.cookies.clear()  # drop the register session; sign in via Google
+
+        self._stub_google(monkeypatch, email="alice@example.com", name="Alice")
+        auth_client.cookies.set("g_oauth_state", "st")
+        r = auth_client.get(
+            "/api/v1/auth/google/callback?code=abc&state=st",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        assert "angar_session" in r.cookies
+        assert auth_client.get("/api/v1/me").json()["user"]["email"] == "alice@example.com"
+
+        user = db_session.execute(
+            _select(User).where(User.email == "alice@example.com")
+        ).scalar_one()
+        memberships = db_session.execute(
+            _select(OrganizationMember).where(OrganizationMember.user_id == user.id)
+        ).scalars().all()
+        assert len(memberships) == 1  # linked, not a second org
+
+    def test_state_mismatch_is_rejected(
+        self, auth_client: TestClient, monkeypatch
+    ) -> None:
+        self._stub_google(monkeypatch, email="x@example.com")
+        auth_client.cookies.set("g_oauth_state", "real-state")
+        r = auth_client.get(
+            "/api/v1/auth/google/callback?code=abc&state=forged",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        assert r.headers["location"].endswith("/login?error=google_state")
+
+    def test_unverified_google_email_is_rejected(
+        self, auth_client: TestClient, monkeypatch
+    ) -> None:
+        self._stub_google(monkeypatch, email="unverified@example.com", verified=False)
+        auth_client.cookies.set("g_oauth_state", "s")
+        r = auth_client.get(
+            "/api/v1/auth/google/callback?code=abc&state=s",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        assert r.headers["location"].endswith("/login?error=google_unverified")
