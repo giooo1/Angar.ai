@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
+import { UploadProvider } from "@/components/upload/upload-provider";
 import { VerificationBanner } from "@/components/shell/verification-banner";
 import { getOrgHeaderStats } from "@/lib/api-server";
 import { getServerSession } from "@/lib/auth";
@@ -39,7 +40,7 @@ export default async function AppShellLayout({
           <VerificationBanner email={session.user.email} />
         )}
         <Topbar user={session.user} organization={session.organization} />
-        {children}
+        <UploadProvider>{children}</UploadProvider>
       </div>
     </div>
   );

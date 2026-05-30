@@ -31,6 +31,7 @@ export type UploadState =
       result: ExtractionStatusResponse;
       startedAt: number;
       durationMs: number;
+      finishedAt: number;
     }
   | {
       id: string;
@@ -42,9 +43,14 @@ export type UploadState =
       extractionId?: string;
       startedAt: number;
       durationMs?: number;
+      finishedAt?: number;
     };
 
 let nextLocalId = 1;
+
+/** How long a finished (completed/failed) entry lingers under
+ *  "Just processed" before it's auto-removed. */
+const RETAIN_MS = 5 * 60 * 1000;
 
 /**
  * Manages the upload + poll lifecycle for one or more files.
@@ -67,6 +73,23 @@ export function useUpload() {
       for (const ctrl of controllers.values()) ctrl.abort();
       controllers.clear();
     };
+  }, []);
+
+  // Expire finished entries after RETAIN_MS so "Just processed" doesn't grow
+  // unbounded. In-flight entries (queued/uploading/extracting) are never pruned.
+  useEffect(() => {
+    const t = setInterval(() => {
+      const cutoff = Date.now() - RETAIN_MS;
+      setUploads((prev) => {
+        const next = prev.filter(
+          (u) =>
+            (u.phase !== "completed" && u.phase !== "failed") ||
+            (u.finishedAt ?? 0) >= cutoff,
+        );
+        return next.length === prev.length ? prev : next;
+      });
+    }, 30_000);
+    return () => clearInterval(t);
   }, []);
 
   const patch = useCallback((id: string, next: Partial<UploadState>) => {
@@ -109,6 +132,7 @@ export function useUpload() {
             extractionId: upload.extraction_id,
             result: final,
             durationMs: Date.now() - state.startedAt,
+            finishedAt: Date.now(),
           });
         } else {
           patch(state.id, {
@@ -117,6 +141,7 @@ export function useUpload() {
             extractionId: upload.extraction_id,
             error: final.error_message ?? "extraction failed",
             durationMs: Date.now() - state.startedAt,
+            finishedAt: Date.now(),
           });
         }
       } catch (err) {
@@ -127,12 +152,14 @@ export function useUpload() {
             error: err.messageEn,
             code: err.code,
             durationMs: Date.now() - state.startedAt,
+            finishedAt: Date.now(),
           });
         } else {
           patch(state.id, {
             phase: "failed",
             error: err instanceof Error ? err.message : String(err),
             durationMs: Date.now() - state.startedAt,
+            finishedAt: Date.now(),
           });
         }
       } finally {

@@ -9,7 +9,7 @@ import type { OrganizationDTO } from "@/lib/api-types";
 import { ActivityCard } from "./activity-card";
 import { UploadZone } from "./upload-zone";
 import { UsagePanel } from "./usage-panel";
-import { useUpload } from "@/hooks/use-upload";
+import { useUploadContext } from "./upload-provider";
 
 type Props = {
   organization: OrganizationDTO;
@@ -26,7 +26,7 @@ type Props = {
  */
 export function UploadShell({ organization }: Props) {
   const router = useRouter();
-  const { uploads, addFiles } = useUpload();
+  const { uploads, addFiles } = useUploadContext();
 
   // Re-pull server data when an upload completes (sidebar tick) or when
   // the backend rejects with QUOTA_EXHAUSTED (so the empty state kicks in).
