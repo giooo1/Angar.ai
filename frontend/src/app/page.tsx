@@ -18,6 +18,10 @@ export default async function Home() {
     redirect("/upload");
   }
 
+  // TEMP: serve the login screen as the landing page. To restore the
+  // landing page, delete the next line.
+  redirect("/login");
+
   return (
     <div className="min-h-screen bg-bg">
       <LandingNav />
