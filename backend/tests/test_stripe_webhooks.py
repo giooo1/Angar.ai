@@ -205,7 +205,7 @@ class TestSubscriptionDeleted:
         handle_webhook(_subscription_deleted(), db_session, s)
         db_session.refresh(linked_org)
         assert linked_org.plan == "free"
-        assert linked_org.monthly_extraction_quota == 50
+        assert linked_org.monthly_extraction_quota == 25
         assert linked_org.stripe_subscription_id is None
 
 

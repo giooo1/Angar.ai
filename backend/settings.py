@@ -100,16 +100,17 @@ def get_settings() -> Settings:
 # ---------------------------------------------------------------------------
 
 PLAN_QUOTAS: dict[str, int] = {
-    "free": 50,
+    "free": 25,
     "pro": 100,
     "business": 500,
 }
 
-# Display copy for the billing page tiles. Prices come from Stripe at
-# checkout — these are advertised numbers only; the source of truth on
-# what a customer is charged is whatever the linked Stripe Price says.
+# Display copy. NOTE: the billing UI renders its own hardcoded tiles
+# (frontend/src/components/billing/billing-plans.tsx); this map is kept in
+# sync for any server-side use. Internal keys are legacy: `pro` is shown as
+# "Solo" and `business` as "Pro" to customers.
 PLAN_DISPLAY: dict[str, dict[str, str]] = {
     "free": {"label": "Free", "price": "₾0", "blurb": "Evaluate Angar.ai on real invoices."},
-    "pro": {"label": "Pro", "price": "₾49 / month", "blurb": "One-person practice."},
-    "business": {"label": "Business", "price": "₾249 / month", "blurb": "Small accounting firm."},
+    "pro": {"label": "Solo", "price": "₾49 / month", "blurb": "One-person practice."},
+    "business": {"label": "Pro", "price": "₾149 / month", "blurb": "Small accounting firm."},
 }

@@ -89,6 +89,18 @@ def init_db() -> None:
                 if name not in cols:
                     conn.execute(text(f"ALTER TABLE extractions ADD COLUMN {name} {sqltype}"))
 
+    # One-time quota normalization: the Free plan dropped from 50 → 25. Bring
+    # legacy Free orgs (still carrying the old default) in line. Idempotent —
+    # after the first run no Free org has 50, and paid orgs are untouched.
+    from sqlalchemy import text as _text
+    with _engine.begin() as conn:
+        conn.execute(
+            _text(
+                "UPDATE organizations SET monthly_extraction_quota = 25 "
+                "WHERE plan = 'free' AND monthly_extraction_quota = 50"
+            )
+        )
+
 
 def get_db() -> Iterator[Session]:
     """FastAPI dependency that yields a request-scoped session."""
