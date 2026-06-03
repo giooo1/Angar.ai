@@ -28,11 +28,6 @@ export default async function DashboardPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const session = await getServerSession();
-  if (!session) {
-    redirect("/login");
-  }
-
   const params = await searchParams;
   const requested = Number(params.page);
   const page =
@@ -56,26 +51,36 @@ export default async function DashboardPage({
   }
   const baseQuery = baseParams.toString();
 
-  let items: Awaited<ReturnType<typeof listExtractionsServer>>["items"] = [];
-  let total = 0;
-  let loadError: string | null = null;
+  // Fetch the session check and the list in parallel — they're independent, so
+  // overlapping the two backend round-trips shaves a hop off each navigation.
+  // (The list call carries the cookie; if unauthenticated it errors harmlessly
+  // and we redirect below before rendering.)
+  const listResult = listExtractionsServer({
+    page,
+    pageSize: PAGE_SIZE,
+    q: params.q,
+    documentType: params.document_type,
+    accepted: acceptedParam,
+    hasCorrections: params.has_corrections === "true",
+    dateFrom: params.date_from,
+    dateTo: params.date_to,
+  }).then(
+    (data) => ({ items: data.items, total: data.total, error: null as string | null }),
+    (err) => ({
+      items: [] as Awaited<ReturnType<typeof listExtractionsServer>>["items"],
+      total: 0,
+      error: err instanceof Error ? err.message : String(err),
+    }),
+  );
 
-  try {
-    const data = await listExtractionsServer({
-      page,
-      pageSize: PAGE_SIZE,
-      q: params.q,
-      documentType: params.document_type,
-      accepted: acceptedParam,
-      hasCorrections: params.has_corrections === "true",
-      dateFrom: params.date_from,
-      dateTo: params.date_to,
-    });
-    items = data.items;
-    total = data.total;
-  } catch (err) {
-    loadError = err instanceof Error ? err.message : String(err);
+  const [session, list] = await Promise.all([getServerSession(), listResult]);
+  if (!session) {
+    redirect("/login");
   }
+
+  const items = list.items;
+  const total = list.total;
+  const loadError = list.error;
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const showingFrom = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
