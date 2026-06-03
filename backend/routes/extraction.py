@@ -13,6 +13,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, Request, Response, UploadFile, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from backend import export_formats
 from backend.models import _utcnow
@@ -186,7 +187,13 @@ async def upload_document(
     # Sync extraction for fresh docs only — reusing a doc keeps its
     # existing extraction. Re-extract is a separate explicit endpoint.
     if is_new:
-        extraction = run_extraction(
+        # run_extraction is synchronous and makes a multi-second blocking
+        # Anthropic call. Offload it to the threadpool so it doesn't freeze
+        # this async endpoint's event loop (which would serialize every other
+        # request behind it). Matches the re-extract path, a sync `def` that
+        # FastAPI already runs in the threadpool.
+        extraction = await run_in_threadpool(
+            run_extraction,
             extraction_id=extraction.id,
             db=db,
             storage=storage,
