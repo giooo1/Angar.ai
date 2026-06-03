@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 import { AuthCard } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { ApiError } from "@/lib/api-types";
  * fresh session cookie + body; we hard-navigate to /upload so the
  * proxy + (app) layout pick up the new session.
  */
-export default function ResetPage() {
+function ResetForm() {
   const params = useSearchParams();
   const token = params?.get("token") ?? null;
   const [password, setPassword] = useState("");
@@ -101,5 +101,14 @@ export default function ResetPage() {
         </Button>
       </form>
     </AuthCard>
+  );
+}
+
+/** useSearchParams() requires a Suspense boundary for static prerender. */
+export default function ResetPage() {
+  return (
+    <Suspense fallback={null}>
+      <ResetForm />
+    </Suspense>
   );
 }

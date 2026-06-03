@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { AuthCard } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ type State =
  * required. Reads `?token=` from the URL and POSTs to the backend.
  * On success offers a quick link back into the app.
  */
-export default function VerifyEmailPage() {
+function VerifyEmailInner() {
   const params = useSearchParams();
   const token = params?.get("token") ?? null;
   const [state, setState] = useState<State>({ kind: "pending" });
@@ -82,5 +82,14 @@ export default function VerifyEmailPage() {
         </div>
       )}
     </AuthCard>
+  );
+}
+
+/** useSearchParams() requires a Suspense boundary for static prerender. */
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={null}>
+      <VerifyEmailInner />
+    </Suspense>
   );
 }
