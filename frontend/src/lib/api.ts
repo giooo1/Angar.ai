@@ -22,9 +22,18 @@ import {
 } from "./api-types";
 import type { CanonicalInvoice } from "./canonical";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  "http://localhost:8000";
+// The backend's absolute origin — used for SERVER-side calls (getServerSession,
+// api-server) and as the rewrite target in next.config.ts.
+const SERVER_BACKEND = (
+  process.env.BACKEND_ORIGIN ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:8000"
+).replace(/\/$/, "");
+
+// In the browser we talk SAME-ORIGIN: Vercel rewrites `/api/*` to the backend
+// (next.config.ts), so the session cookie is first-party to the frontend domain
+// and the page gate can read it. On the server we hit the backend directly.
+const API_BASE = typeof window === "undefined" ? SERVER_BACKEND : "";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
