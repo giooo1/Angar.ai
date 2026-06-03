@@ -26,7 +26,6 @@ export default async function LoginPage({
   return (
     <AuthCard
       title="Welcome"
-      titleAccent="back"
       subtitle="Sign in to keep extracting Georgian invoices into structured data."
       footer={
         <div className="flex flex-col gap-2 items-center">
